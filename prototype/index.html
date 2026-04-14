@@ -793,11 +793,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
     <div class="note-grid" id="noteGrid"></div>
   </div>
 
-  <!-- Goals (bottom section) -->
-  <div class="goals-section" style="padding-bottom:140px">
-    <div class="sec-head"><span class="sec-title">Goals</span><span class="sec-link" onclick="nav('goals')">View All</span></div>
-    <div class="goals-scroll" id="goalsScroll"></div>
-  </div>
+  <div style="padding-bottom:120px"></div>
 </div>
 
 <!-- ===== EDITOR ===== -->
@@ -894,15 +890,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
   <!-- Summary -->
   <div id="goalsSummary"></div>
 
-  <!-- Goal type filter chips -->
-  <div class="goal-types" id="goalTypeChips">
-    <button class="goal-type-chip on" onclick="setGoalType('all',this)"><svg><use href="#i-target"/></svg>All</button>
-    <button class="goal-type-chip" onclick="setGoalType('health',this)"><svg><use href="#i-heart"/></svg>Health</button>
-    <button class="goal-type-chip" onclick="setGoalType('fitness',this)"><svg><use href="#i-target"/></svg>Fitness</button>
-    <button class="goal-type-chip" onclick="setGoalType('learning',this)"><svg><use href="#i-file"/></svg>Learning</button>
-    <button class="goal-type-chip" onclick="setGoalType('finance',this)"><svg><use href="#i-briefcase"/></svg>Finance</button>
-    <button class="goal-type-chip" onclick="setGoalType('productivity',this)"><svg><use href="#i-check-sq"/></svg>Work</button>
-  </div>
+  <!-- Goal type filter chips (rendered dynamically) -->
+  <div class="goal-types" id="goalTypeChips"></div>
 
   <!-- Period Tabs -->
   <div class="period-tabs">
@@ -1126,6 +1115,8 @@ notes:[
   {id:'3',type:'note',title:'Book Recommendations',body:'The Midnight Library — Matt Haig\nProject Hail Mary — Andy Weir\nKlara and the Sun — Kazuo Ishiguro',ctx:'personal',folder:'Inbox',color:'purple',pin:false,reminder:null,pri:3,items:[],tags:['#reading'],time:'1d'},
   {id:'4',type:'note',title:'Workout Plan',body:'Mon: Upper body\nTue: Cardio\nWed: Lower body\nThu: Rest\nFri: Full body\nSat: Yoga',ctx:'personal',folder:'Health',color:'orange',pin:false,reminder:null,pri:2,items:[],tags:['#fitness'],time:'2d'},
   {id:'5',type:'note',title:'Weekend Trip Ideas',body:'Napa Valley, Big Sur, Lake Tahoe, Joshua Tree',ctx:'personal',folder:'Inbox',color:'yellow',pin:false,reminder:null,pri:null,items:[],tags:['#travel'],time:'3d'},
+  {id:'11',type:'note',title:'Tax Documents',body:'W-2, 1099, receipts collected. Filed on March 15.',ctx:'personal',folder:'Inbox',color:'default',pin:false,reminder:null,pri:3,items:[],tags:[],time:'2w',done:true},
+  {id:'12',type:'list',title:'Move-in Checklist',body:'',ctx:'personal',folder:'Inbox',color:'default',pin:false,reminder:null,pri:2,items:[{id:'m1',t:'Change address',d:true},{id:'m2',t:'Set up utilities',d:true},{id:'m3',t:'Get new keys',d:true}],tags:[],time:'1w',done:true},
   // Lists
   {id:'1',type:'list',title:'Grocery List',body:'',ctx:'personal',folder:'Inbox',color:'green',pin:true,reminder:null,pri:1,items:[{id:'c1',t:'Avocados',d:true},{id:'c2',t:'Oat milk',d:true},{id:'c3',t:'Sourdough bread',d:false},{id:'c4',t:'Fresh salmon',d:false},{id:'c5',t:'Lemons',d:false}],tags:['#errands'],time:'2h'},
   {id:'7',type:'list',title:'Client Meeting Prep',body:'',ctx:'business',folder:'Meetings',color:'default',pin:true,reminder:'Tomorrow 9 AM',pri:0,items:[{id:'c6',t:'Review Q1 metrics',d:true},{id:'c7',t:'Prepare demo',d:true},{id:'c8',t:'Update roadmap',d:false},{id:'c9',t:'Send agenda',d:false}],tags:['#client'],time:'3h'},
@@ -1134,6 +1125,7 @@ notes:[
   {id:'8',type:'note',title:'1:1 with Sarah',body:'Great progress on onboarding. Discuss promotion. She wants to lead mobile.',ctx:'business',folder:'Meetings',color:'green',pin:false,reminder:null,pri:2,items:[],tags:['#team'],time:'1d'},
   {id:'9',type:'note',title:'API Design Review',body:'POST /v2/notes\nGET /v2/search\nWS /v2/sync\n\nFinalize pagination.',ctx:'business',folder:'Work',color:'orange',pin:false,reminder:null,pri:1,items:[],tags:['#api'],time:'2d'},
   {id:'10',type:'note',title:'Budget Request Q3',body:'Cloud: $45K→$52K\nTooling: $8K\nConferences: $15K\n\nDue April 18.',ctx:'business',folder:'Work',color:'red',pin:false,reminder:'Apr 18',pri:0,items:[],tags:['#budget'],time:'4d'},
+  {id:'13',type:'note',title:'Q1 Retrospective',body:'Team velocity improved 20%. Shipped 3 major features.',ctx:'business',folder:'Work',color:'default',pin:false,reminder:null,pri:null,items:[],tags:[],time:'2w',done:true},
   // Tasks
   {id:'t1',type:'task',title:'Call dentist to confirm',body:'',ctx:'personal',folder:'Health',color:'default',pin:false,reminder:'Tue 9 AM',pri:0,items:[],tags:[],time:'1h',done:false},
   {id:'t2',type:'task',title:'Buy birthday gift for Mom',body:'',ctx:'personal',folder:'Inbox',color:'default',pin:false,reminder:'Apr 20',pri:1,items:[],tags:[],time:'3h',done:false},
@@ -1594,6 +1586,29 @@ S.goalPeriod='All';S.goalType='all';S.recentlyOpened=[];
 function setGoalPeriod(p,el){S.goalPeriod=p;document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderGoalsFull();}
 function setGoalType(t,el){S.goalType=t;document.querySelectorAll('.goal-type-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderGoalsFull();}
 
+function renderGoalTypeChips(){
+  const personal=[
+    {id:'all',icon:'i-target',label:'All'},
+    {id:'health',icon:'i-heart',label:'Health'},
+    {id:'fitness',icon:'i-target',label:'Fitness'},
+    {id:'learning',icon:'i-file',label:'Learning'},
+    {id:'finance',icon:'i-briefcase',label:'Finance'},
+    {id:'mindfulness',icon:'i-moon',label:'Mind'},
+  ];
+  const business=[
+    {id:'all',icon:'i-target',label:'All'},
+    {id:'productivity',icon:'i-check-sq',label:'Productivity'},
+    {id:'team',icon:'i-user',label:'Team'},
+    {id:'learning',icon:'i-file',label:'Learning'},
+  ];
+  const chips=S.ctx==='personal'?personal:business;
+  // Reset type if not valid for current context
+  if(!chips.find(c=>c.id===S.goalType))S.goalType='all';
+  document.getElementById('goalTypeChips').innerHTML=chips.map(c=>
+    `<button class="goal-type-chip ${S.goalType===c.id?'on':''}" onclick="setGoalType('${c.id}',this)"><svg><use href="#${c.icon}"/></svg>${c.label}</button>`
+  ).join('');
+}
+
 // AI Goal insight
 function renderGoalAIInsight(){
   const g=S.goals[S.ctx];
@@ -1707,6 +1722,7 @@ function closeGoalHelper(e){if(e&&e.target!==e.currentTarget)return;document.get
 function renderGoalsFull(){
   const g=S.goals[S.ctx];
   renderGoalAIInsight();
+  renderGoalTypeChips();
 
   // Sync ctx toggles
   const pillG=document.getElementById('ctxPillG');
