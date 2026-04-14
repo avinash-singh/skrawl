@@ -156,9 +156,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   /* + buttons with labels */
   .sec-add{width:auto!important;padding:0 16px!important;border-radius:var(--r-full)!important;height:34px!important}
   .sec-add::after{content:attr(data-label);font-size:12px;font-weight:600;color:#fff;margin-left:2px}
-  /* Back headers — no back button needed, just title */
+  /* Back headers — no back button, title left-aligned */
   .bhead .bbtn{display:none}
   .bhead-title{text-align:left!important;padding-left:8px!important}
+  /* Context toggles in bhead (goals, calendar) — same wide style */
+  .bhead .ctx-icons{width:220px!important;height:42px!important;background:var(--bg-card)!important;border:1px solid var(--border2)!important;border-radius:var(--r-full)!important;padding:3px!important}
+  .bhead .ctx-icon-btn{flex:1!important;width:auto!important;gap:6px}
+  .bhead .ctx-icon-btn::after{content:attr(data-label);font-size:12px;font-weight:600}
+  .bhead .ctx-pill{width:calc(50% - 3px)!important}
+  .bhead .ctx-pill.business{left:calc(50%)!important}
+  /* Search — add top padding so it doesn't overlap */
+  #s-search .bhead{padding-top:16px!important;padding-bottom:14px!important}
 }
 
 /* Layout toggle */
@@ -981,7 +989,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   <div class="bhead">
     <span class="bhead-title" style="text-align:left;padding-left:8px">Goals</span>
     <div class="bhead-acts">
-      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillG"></div><button class="ctx-icon-btn on" id="cPersonalG" onclick="setCtx('personal')"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessG" onclick="setCtx('business')"><svg><use href="#i-briefcase"/></svg></button></div>
+      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillG"></div><button class="ctx-icon-btn on" id="cPersonalG" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessG" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button></div>
       <button class="ibtn" onclick="toast('New goal created')"><svg class="i"><use href="#i-plus"/></svg></button>
     </div>
   </div>
@@ -1029,7 +1037,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   <div class="bhead">
     <span class="bhead-title" style="text-align:left;padding-left:8px">Calendar</span>
     <div class="bhead-acts">
-      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillC"></div><button class="ctx-icon-btn on" id="cPersonalC" onclick="setCtx('personal')"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessC" onclick="setCtx('business')"><svg><use href="#i-briefcase"/></svg></button></div>
+      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillC"></div><button class="ctx-icon-btn on" id="cPersonalC" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessC" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button></div>
     </div>
   </div>
   <div class="cal-month"><button class="ibtn" style="width:32px;height:32px" onclick="toast('Previous month')"><svg class="i-s"><use href="#i-left"/></svg></button><span class="cal-month-lbl">April 2026</span><button class="ibtn" style="width:32px;height:32px" onclick="toast('Next month')"><svg class="i-s"><use href="#i-right"/></svg></button></div>
@@ -1053,7 +1061,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   <div class="bhead">
     <button class="bbtn" onclick="nav('home')"><svg class="i"><use href="#i-left"/></svg>Back</button>
     <span class="bhead-title">Search</span>
-    <div class="bhead-acts"></div>
+    <div class="bhead-acts">
+      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillS"></div><button class="ctx-icon-btn on" id="cPersonalS" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessS" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button></div>
+    </div>
   </div>
   <div style="padding:4px 20px 10px;position:relative">
     <svg class="i-s" style="position:absolute;left:34px;top:50%;transform:translateY(-50%);color:var(--text-muted)"><use href="#i-search"/></svg>
