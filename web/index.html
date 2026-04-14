@@ -134,7 +134,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 /* Desktop top bar for context toggle */
 .desk-topbar{display:none;align-items:center;justify-content:flex-end;padding:12px 28px;gap:10px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
 @media(min-width:768px){.desk-topbar{display:flex}}
-.desk-topbar .ctx-icons{width:200px;height:40px}
+.desk-topbar .ctx-icons{width:220px;height:42px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-full);padding:3px}
 .desk-topbar .ctx-icon-btn{flex:1}
 .desk-topbar .ctx-pill{width:calc(50% - 3px)}
 .desk-topbar .ctx-pill.business{left:calc(50%)}
@@ -146,6 +146,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   .scr{bottom:0!important}
   /* Hide entire mobile home header (hamburger, logo, toggle, settings) */
   .home-head .home-top{display:none!important}
+  /* Greeting + quote spacious on desktop */
+  .home-greet{font-size:20px!important;font-weight:700!important;color:var(--text)!important;margin-bottom:4px!important}
+  #aiBannerQuote{font-size:14px!important;margin-bottom:20px!important}
   /* Bigger AI insight */
   .ai-banner{padding:18px 24px!important}
   .ai-banner-text{font-size:15px!important}
@@ -832,7 +835,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 <!-- Desktop Sidebar -->
 <div class="desk-sidebar" id="deskSidebar">
   <div class="ds-logo">Skrawl<span>.</span></div>
-  <div class="ds-ctx" id="dsSidebarCtx"></div>
   <div class="ds-nav">
     <button class="ds-item on" data-ds="home" onclick="nav('home')"><svg class="i"><use href="#i-file"/></svg>Notes</button>
     <button class="ds-item" data-ds="goals" onclick="nav('goals')"><svg class="i"><use href="#i-target"/></svg>Goals</button>
@@ -2255,11 +2257,9 @@ function toast(m){const e=document.getElementById('toast');e.textContent=m;e.cla
 
 // DESKTOP SIDEBAR
 function renderDeskSidebar(){
-  // Context toggle
-  document.getElementById('dsSidebarCtx').innerHTML=`<div class="ctx-icons" style="width:100%;height:42px"><div class="ctx-pill ${S.ctx}" id="ctxPillD" style="width:calc(50% - 3px);left:${S.ctx==='personal'?'3px':'calc(50%)'}"></div><button class="ctx-icon-btn ${S.ctx==='personal'?'on':''}" id="cPersonalD" onclick="setCtx('personal')" style="flex:1"><svg style="width:15px;height:15px"><use href="#i-user"/></svg><span style="margin-left:4px">Personal</span></button><button class="ctx-icon-btn ${S.ctx==='business'?'on':''}" id="cBusinessD" onclick="setCtx('business')" style="flex:1"><svg style="width:15px;height:15px"><use href="#i-briefcase"/></svg><span style="margin-left:4px">Business</span></button></div>`;
   // Folders
   const folders=S.folders[S.ctx];
-  let h='';
+  let h='<button class="ds-item '+(S.currentFolder==='All Notes'?'on':'')+'" onclick="S.currentFolder=\'All Notes\';renderNotes();renderDeskSidebar()"><svg class="i" style="color:var(--text-dim)"><use href="#i-file"/></svg>All Notes</button>';
   folders.forEach(f=>{
     if(f.n==='All Notes')return;
     const hue=f.hue;
@@ -2268,6 +2268,7 @@ function renderDeskSidebar(){
       h+=`<button class="ds-item ${S.currentFolder===sub.n?'on':''}" style="padding-left:40px;font-size:13px" onclick="S.currentFolder='${sub.n}';renderNotes();renderDeskSidebar()"><svg class="i-s" style="color:${sub.hue||'var(--text-dim)'}"><use href="#i-folder"/></svg>${sub.n}</button>`;
     });}
   });
+  h+=`<button class="ds-item" onclick="openFE_new()" style="color:var(--accent)"><svg class="i" style="color:var(--accent)"><use href="#i-plus"/></svg>New Folder</button>`;
   document.getElementById('dsSidebarFolders').innerHTML=h;
   // Sync tab highlights
   document.querySelectorAll('.ds-item[data-ds]').forEach(b=>b.classList.toggle('on',b.dataset.ds===S.screen));
