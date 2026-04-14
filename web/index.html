@@ -83,10 +83,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 .ds-divider{height:1px;background:var(--border);margin:8px 14px}
 .ds-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;padding:12px 14px 6px}
 .ds-ctx{padding:12px 14px}
-.ds-ctx .ctx-icons{width:100%;height:42px}
-.ds-ctx .ctx-icon-btn{flex:1;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted)}
-.ds-ctx .ctx-icon-btn.on{color:#fff}
-.ds-ctx .ctx-pill{width:calc(50% - 3px)}
 
 /* Main content area */
 .main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
@@ -136,27 +132,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   .tbar{display:none!important}
   .mic-fab{bottom:24px!important;right:28px!important}
   .scr{bottom:0!important}
-  /* Hide mobile hamburger + logo on desktop (sidebar has them) */
-  .home-head .home-top .ibtn[onclick*="openSidebar"]{display:none!important}
-  .home-head .home-top .logo{display:none!important}
-  /* Bigger AI banner on desktop */
-  .ai-banner{padding:18px 24px!important}
-  .ai-banner-text{font-size:15px!important}
-  /* Bigger + buttons with labels on desktop */
-  .sec-add{width:auto!important;padding:0 14px!important;border-radius:var(--r-full)!important;gap:6px;font-size:12px;font-weight:600;height:32px}
-  .sec-add::after{content:attr(data-label);color:#fff;font-size:12px;font-weight:600}
-  /* Wider context toggle with text labels */
-  .ctx-icons{width:160px!important}
-  .ctx-icon-btn{flex:1!important;width:auto!important}
-  .ctx-icon-btn::after{content:attr(data-label);margin-left:4px;font-size:11px;font-weight:600}
-  .ctx-pill{width:calc(50% - 3px)!important}
-  .ctx-pill.business{left:calc(50%)!important}
 }
-
-/* Layout toggle button */
-.layout-toggle{position:fixed;bottom:12px;left:12px;z-index:9999;padding:6px 12px;border-radius:var(--r-full);border:1px solid var(--border);background:var(--bg-card);color:var(--text-dim);font:600 11px/1 'Inter',sans-serif;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
-.layout-toggle:hover{background:var(--bg-card-hover);color:var(--text)}
-.layout-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none}
 
 /* ===== ICONS ===== */
 .i{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0}
@@ -859,8 +835,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
       <div class="home-actions">
         <div class="ctx-icons">
           <div class="ctx-pill personal" id="ctxPill"></div>
-          <button class="ctx-icon-btn on" id="cPersonal" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button>
-          <button class="ctx-icon-btn" id="cBusiness" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button>
+          <button class="ctx-icon-btn on" id="cPersonal" onclick="setCtx('personal')"><svg><use href="#i-user"/></svg></button>
+          <button class="ctx-icon-btn" id="cBusiness" onclick="setCtx('business')"><svg><use href="#i-briefcase"/></svg></button>
         </div>
         <button class="ibtn" onclick="nav('settings')"><svg class="i"><use href="#i-settings"/></svg></button>
       </div>
@@ -885,14 +861,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 
   <!-- Tasks (compact inline) -->
   <div class="tasks-section">
-    <div class="sec-head"><span class="sec-title">Tasks</span><div style="display:flex;align-items:center;gap:8px"><span class="sec-link" id="taskCount"></span><button class="sec-add" data-label=" New Task" onclick="showTaskInput()"><svg><use href="#i-plus"/></svg></button></div></div>
+    <div class="sec-head"><span class="sec-title">Tasks</span><div style="display:flex;align-items:center;gap:8px"><span class="sec-link" id="taskCount"></span><button class="sec-add" onclick="showTaskInput()"><svg><use href="#i-plus"/></svg></button></div></div>
     <div id="taskList"></div>
   </div>
 
   <!-- Notes & Lists Grid -->
   <div class="grid-section" style="padding-bottom:16px">
     <div id="folderViewHeader"></div>
-    <div class="sec-head"><span class="sec-title" id="gridLabel">Notes & Lists</span><button class="sec-add" data-label=" New Note" onclick="openNew('note')"><svg><use href="#i-plus"/></svg></button></div>
+    <div class="sec-head"><span class="sec-title" id="gridLabel">Notes & Lists</span><button class="sec-add" onclick="openNew('note')"><svg><use href="#i-plus"/></svg></button></div>
     <div class="note-grid" id="noteGrid"></div>
   </div>
 
@@ -2242,7 +2218,7 @@ function toast(m){const e=document.getElementById('toast');e.textContent=m;e.cla
 // DESKTOP SIDEBAR
 function renderDeskSidebar(){
   // Context toggle
-  document.getElementById('dsSidebarCtx').innerHTML=`<div class="ctx-icons" style="width:100%;height:42px"><div class="ctx-pill ${S.ctx}" id="ctxPillD" style="left:${S.ctx==='personal'?'3px':'calc(50%)'}"></div><button class="ctx-icon-btn ${S.ctx==='personal'?'on':''}" id="cPersonalD" onclick="setCtx('personal')" style="flex:1"><svg style="width:15px;height:15px"><use href="#i-user"/></svg><span style="font-size:12px;margin-left:4px">Personal</span></button><button class="ctx-icon-btn ${S.ctx==='business'?'on':''}" id="cBusinessD" onclick="setCtx('business')" style="flex:1"><svg style="width:15px;height:15px"><use href="#i-briefcase"/></svg><span style="font-size:12px;margin-left:4px">Business</span></button></div>`;
+  document.getElementById('dsSidebarCtx').innerHTML=`<div class="ctx-icons" style="width:100%"><div class="ctx-pill personal" id="ctxPillD"></div><button class="ctx-icon-btn on" id="cPersonalD" onclick="setCtx('personal')" style="flex:1"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessD" onclick="setCtx('business')" style="flex:1"><svg><use href="#i-briefcase"/></svg></button></div>`;
   // Folders
   const folders=S.folders[S.ctx];
   let h='';
@@ -2297,28 +2273,6 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-// LAYOUT TOGGLE (mobile preview)
-S.forceMobile=false;
-function toggleLayout(){
-  S.forceMobile=!S.forceMobile;
-  const app=document.querySelector('.app');
-  const ds=document.getElementById('deskSidebar');
-  const lbl=document.getElementById('layoutLabel');
-  if(S.forceMobile){
-    app.style.maxWidth='393px';app.style.margin='0 auto';app.style.height='852px';app.style.borderRadius='20px';app.style.overflow='hidden';app.style.boxShadow='var(--shadow-lg)';app.style.marginTop='20px';
-    ds.style.display='none';
-    document.querySelector('.tbar').style.display='flex';
-    document.querySelector('.sbar').style.display='flex';
-    lbl.textContent='Desktop';
-  }else{
-    app.style.maxWidth='';app.style.margin='';app.style.height='100vh';app.style.borderRadius='';app.style.overflow='';app.style.boxShadow='';app.style.marginTop='';
-    ds.style.display='';
-    document.querySelector('.tbar').style.display='';
-    document.querySelector('.sbar').style.display='';
-    lbl.textContent='Mobile';
-  }
-}
-
 // INIT
 loadState();
 initCP();renderAll();onSearch();renderDeskSidebar();
@@ -2328,13 +2282,6 @@ document.getElementById('vibeSlider')&&(document.getElementById('vibeSlider').va
 </script>
 
 </div><!-- /main-area -->
-
-<!-- Layout toggle -->
-<button class="layout-toggle" id="layoutToggle" onclick="toggleLayout()">
-  <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-  <span id="layoutLabel">Mobile</span>
-</button>
-
 </div><!-- /app -->
 
 </body>
