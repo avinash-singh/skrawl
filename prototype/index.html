@@ -620,6 +620,33 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 .vc-close{margin-top:28px;padding:14px 44px;border-radius:var(--r-full);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font:600 15px/1 'Inter',sans-serif;cursor:pointer;transition:all .15s}
 .vc-close:hover{background:rgba(255,255,255,.12)}
 
+/* ===== PRIORITY BADGES ===== */
+.pri{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:var(--r-full);letter-spacing:.3px}
+.pri-0{background:rgba(255,90,90,0.15);color:#FF5A5A}
+.pri-1{background:rgba(255,184,106,0.15);color:#FFB86A}
+.pri-2{background:rgba(106,180,255,0.15);color:#6AB4FF}
+.pri-3{background:rgba(149,149,165,0.12);color:var(--text-dim)}
+
+/* Sort controls */
+.sort-bar{display:flex;align-items:center;gap:6px;padding:0 20px 10px}
+.sort-btn{padding:5px 12px;border-radius:var(--r-full);border:1px solid var(--border);background:transparent;color:var(--text-muted);font:600 11px/1 'Inter',sans-serif;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:4px}
+.sort-btn:hover{border-color:var(--border2);color:var(--text)}
+.sort-btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.sort-btn svg{width:11px;height:11px;stroke:currentColor;fill:none;pointer-events:none}
+
+/* Priority in editor */
+.ed-pri{display:flex;align-items:center;gap:6px;margin-left:auto}
+.ed-pri-btn{padding:4px 10px;border-radius:var(--r-full);border:1px solid var(--border);background:transparent;font:600 11px/1 'Inter',sans-serif;cursor:pointer;transition:all .15s}
+.ed-pri-btn:hover{border-color:var(--border2)}
+.ed-pri-btn.sel{color:#fff}
+.ed-pri-btn.sel.p0{background:#FF5A5A;border-color:#FF5A5A}
+.ed-pri-btn.sel.p1{background:#FFB86A;border-color:#FFB86A}
+.ed-pri-btn.sel.p2{background:#6AB4FF;border-color:#6AB4FF}
+.ed-pri-btn.sel.p3{background:var(--text-dim);border-color:var(--text-dim)}
+
+/* Calendar sort */
+.cal-sort{display:flex;gap:6px;padding:0 20px 10px}
+
 /* ===== VIBE SLIDER ===== */
 .vibe-slider-wrap{padding:0 4px}
 .vibe-labels{display:flex;justify-content:space-between;margin-bottom:6px}
@@ -707,6 +734,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
       <div class="ai-banner-text" id="aiBannerText">3 tasks due today — start with "Client Meeting Prep"?</div>
     </div>
     <div class="ai-banner-icon"><svg><use href="#i-sparkles"/></svg></div>
+  </div>
+
+  <!-- Sort bar -->
+  <div class="sort-bar" id="homeSort">
+    <button class="sort-btn on" onclick="setSort('priority',this)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h12M3 18h6"/></svg>Priority</button>
+    <button class="sort-btn" onclick="setSort('date',this)"><svg><use href="#i-clock"/></svg>Recent</button>
   </div>
 
   <!-- Tasks (compact inline) -->
@@ -825,11 +858,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 <div class="scr hide" id="s-calendar">
   <div class="bhead">
     <span class="bhead-title" style="text-align:left;padding-left:8px">Calendar</span>
-    <div class="bhead-acts"></div>
+    <div class="bhead-acts">
+      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillC"></div><button class="ctx-icon-btn on" id="cPersonalC" onclick="setCtx('personal')"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessC" onclick="setCtx('business')"><svg><use href="#i-briefcase"/></svg></button></div>
+    </div>
   </div>
   <div class="cal-month"><button class="ibtn" style="width:32px;height:32px" onclick="toast('Previous month')"><svg class="i-s"><use href="#i-left"/></svg></button><span class="cal-month-lbl">April 2026</span><button class="ibtn" style="width:32px;height:32px" onclick="toast('Next month')"><svg class="i-s"><use href="#i-right"/></svg></button></div>
   <div class="cal-grid" id="calGrid"></div>
-  <div style="padding:0 20px 8px"><span class="sec-title">Upcoming Reminders</span></div>
+  <div style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between"><span class="sec-title">Upcoming Reminders</span><div class="cal-sort"><button class="sort-btn on" onclick="setCalSort('priority',this)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h12M3 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Priority</button><button class="sort-btn" onclick="setCalSort('date',this)"><svg><use href="#i-clock"/></svg>Date</button></div></div>
   <div class="cal-events" id="calEvents"></div>
 </div>
 
@@ -1011,26 +1046,27 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 const S={screen:'home',ctx:'personal',theme:'dark',noteId:null,asNoteId:null,
 notes:[
   // type: 'note' | 'list' | 'task'
-  // Notes (multi-line text)
-  {id:'2',type:'note',title:'Dentist Appointment',body:'Dr. Patel — Tuesday at 2:30pm. Remember to bring insurance card.',ctx:'personal',folder:'Health',color:'blue',pin:true,reminder:'Tue 2:30 PM',items:[],tags:['#health'],time:'5h'},
-  {id:'3',type:'note',title:'Book Recommendations',body:'The Midnight Library — Matt Haig\nProject Hail Mary — Andy Weir\nKlara and the Sun — Kazuo Ishiguro',ctx:'personal',folder:'Inbox',color:'purple',pin:false,reminder:null,items:[],tags:['#reading'],time:'1d'},
-  {id:'4',type:'note',title:'Workout Plan',body:'Mon: Upper body\nTue: Cardio\nWed: Lower body\nThu: Rest\nFri: Full body\nSat: Yoga',ctx:'personal',folder:'Health',color:'orange',pin:false,reminder:null,items:[],tags:['#fitness'],time:'2d'},
-  {id:'5',type:'note',title:'Weekend Trip Ideas',body:'Napa Valley, Big Sur, Lake Tahoe, Joshua Tree',ctx:'personal',folder:'Inbox',color:'yellow',pin:false,reminder:null,items:[],tags:['#travel'],time:'3d'},
-  // Lists (checklists)
-  {id:'1',type:'list',title:'Grocery List',body:'',ctx:'personal',folder:'Inbox',color:'green',pin:true,reminder:null,items:[{id:'c1',t:'Avocados',d:true},{id:'c2',t:'Oat milk',d:true},{id:'c3',t:'Sourdough bread',d:false},{id:'c4',t:'Fresh salmon',d:false},{id:'c5',t:'Lemons',d:false}],tags:['#errands'],time:'2h'},
-  {id:'7',type:'list',title:'Client Meeting Prep',body:'',ctx:'business',folder:'Meetings',color:'default',pin:true,reminder:'Tomorrow 9 AM',items:[{id:'c6',t:'Review Q1 metrics',d:true},{id:'c7',t:'Prepare demo',d:true},{id:'c8',t:'Update roadmap',d:false},{id:'c9',t:'Send agenda',d:false}],tags:['#client'],time:'3h'},
+  // pri: null | 0 | 1 | 2 | 3  (P0=critical, P3=low, null=unset)
+  // Notes
+  {id:'2',type:'note',title:'Dentist Appointment',body:'Dr. Patel — Tuesday at 2:30pm. Remember to bring insurance card.',ctx:'personal',folder:'Health',color:'blue',pin:true,reminder:'Tue 2:30 PM',pri:1,items:[],tags:['#health'],time:'5h'},
+  {id:'3',type:'note',title:'Book Recommendations',body:'The Midnight Library — Matt Haig\nProject Hail Mary — Andy Weir\nKlara and the Sun — Kazuo Ishiguro',ctx:'personal',folder:'Inbox',color:'purple',pin:false,reminder:null,pri:3,items:[],tags:['#reading'],time:'1d'},
+  {id:'4',type:'note',title:'Workout Plan',body:'Mon: Upper body\nTue: Cardio\nWed: Lower body\nThu: Rest\nFri: Full body\nSat: Yoga',ctx:'personal',folder:'Health',color:'orange',pin:false,reminder:null,pri:2,items:[],tags:['#fitness'],time:'2d'},
+  {id:'5',type:'note',title:'Weekend Trip Ideas',body:'Napa Valley, Big Sur, Lake Tahoe, Joshua Tree',ctx:'personal',folder:'Inbox',color:'yellow',pin:false,reminder:null,pri:null,items:[],tags:['#travel'],time:'3d'},
+  // Lists
+  {id:'1',type:'list',title:'Grocery List',body:'',ctx:'personal',folder:'Inbox',color:'green',pin:true,reminder:null,pri:1,items:[{id:'c1',t:'Avocados',d:true},{id:'c2',t:'Oat milk',d:true},{id:'c3',t:'Sourdough bread',d:false},{id:'c4',t:'Fresh salmon',d:false},{id:'c5',t:'Lemons',d:false}],tags:['#errands'],time:'2h'},
+  {id:'7',type:'list',title:'Client Meeting Prep',body:'',ctx:'business',folder:'Meetings',color:'default',pin:true,reminder:'Tomorrow 9 AM',pri:0,items:[{id:'c6',t:'Review Q1 metrics',d:true},{id:'c7',t:'Prepare demo',d:true},{id:'c8',t:'Update roadmap',d:false},{id:'c9',t:'Send agenda',d:false}],tags:['#client'],time:'3h'},
   // Business notes
-  {id:'6',type:'note',title:'Sprint Planning',body:'Q2: Migrate auth to OAuth 2.1, rate limiting on APIs, p95 < 200ms. 3 devs, 1 QA.',ctx:'business',folder:'Work',color:'blue',pin:true,reminder:'Mon 10 AM',items:[],tags:['#sprint'],time:'1h'},
-  {id:'8',type:'note',title:'1:1 with Sarah',body:'Great progress on onboarding. Discuss promotion. She wants to lead mobile.',ctx:'business',folder:'Meetings',color:'green',pin:false,reminder:null,items:[],tags:['#team'],time:'1d'},
-  {id:'9',type:'note',title:'API Design Review',body:'POST /v2/notes\nGET /v2/search\nWS /v2/sync\n\nFinalize pagination.',ctx:'business',folder:'Work',color:'orange',pin:false,reminder:null,items:[],tags:['#api'],time:'2d'},
-  {id:'10',type:'note',title:'Budget Request Q3',body:'Cloud: $45K→$52K\nTooling: $8K\nConferences: $15K\n\nDue April 18.',ctx:'business',folder:'Work',color:'red',pin:false,reminder:'Apr 18',items:[],tags:['#budget'],time:'4d'},
-  // Tasks (single-line + reminder)
-  {id:'t1',type:'task',title:'Call dentist to confirm',body:'',ctx:'personal',folder:'Health',color:'default',pin:false,reminder:'Tue 9 AM',items:[],tags:[],time:'1h',done:false},
-  {id:'t2',type:'task',title:'Buy birthday gift for Mom',body:'',ctx:'personal',folder:'Inbox',color:'default',pin:false,reminder:'Apr 20',items:[],tags:[],time:'3h',done:false},
-  {id:'t3',type:'task',title:'Renew gym membership',body:'',ctx:'personal',folder:'Health',color:'default',pin:false,reminder:'Apr 15',items:[],tags:[],time:'1d',done:true},
-  {id:'t4',type:'task',title:'Send Q1 report to Sarah',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:'Tomorrow 10 AM',items:[],tags:[],time:'2h',done:false},
-  {id:'t5',type:'task',title:'Book flight for conference',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:'Apr 18',items:[],tags:[],time:'1d',done:false},
-  {id:'t6',type:'task',title:'Review PR #342',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:null,items:[],tags:[],time:'3h',done:true},
+  {id:'6',type:'note',title:'Sprint Planning',body:'Q2: Migrate auth to OAuth 2.1, rate limiting on APIs, p95 < 200ms. 3 devs, 1 QA.',ctx:'business',folder:'Work',color:'blue',pin:true,reminder:'Mon 10 AM',pri:0,items:[],tags:['#sprint'],time:'1h'},
+  {id:'8',type:'note',title:'1:1 with Sarah',body:'Great progress on onboarding. Discuss promotion. She wants to lead mobile.',ctx:'business',folder:'Meetings',color:'green',pin:false,reminder:null,pri:2,items:[],tags:['#team'],time:'1d'},
+  {id:'9',type:'note',title:'API Design Review',body:'POST /v2/notes\nGET /v2/search\nWS /v2/sync\n\nFinalize pagination.',ctx:'business',folder:'Work',color:'orange',pin:false,reminder:null,pri:1,items:[],tags:['#api'],time:'2d'},
+  {id:'10',type:'note',title:'Budget Request Q3',body:'Cloud: $45K→$52K\nTooling: $8K\nConferences: $15K\n\nDue April 18.',ctx:'business',folder:'Work',color:'red',pin:false,reminder:'Apr 18',pri:0,items:[],tags:['#budget'],time:'4d'},
+  // Tasks
+  {id:'t1',type:'task',title:'Call dentist to confirm',body:'',ctx:'personal',folder:'Health',color:'default',pin:false,reminder:'Tue 9 AM',pri:0,items:[],tags:[],time:'1h',done:false},
+  {id:'t2',type:'task',title:'Buy birthday gift for Mom',body:'',ctx:'personal',folder:'Inbox',color:'default',pin:false,reminder:'Apr 20',pri:1,items:[],tags:[],time:'3h',done:false},
+  {id:'t3',type:'task',title:'Renew gym membership',body:'',ctx:'personal',folder:'Health',color:'default',pin:false,reminder:'Apr 15',pri:2,items:[],tags:[],time:'1d',done:true},
+  {id:'t4',type:'task',title:'Send Q1 report to Sarah',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:'Tomorrow 10 AM',pri:0,items:[],tags:[],time:'2h',done:false},
+  {id:'t5',type:'task',title:'Book flight for conference',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:'Apr 18',pri:1,items:[],tags:[],time:'1d',done:false},
+  {id:'t6',type:'task',title:'Review PR #342',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:null,pri:2,items:[],tags:[],time:'3h',done:true},
 ],
 goals:{personal:[
   {name:'Calorie Intake',done:1800,total:2200,unit:'cal',color:'#FF6AC2',period:'Daily',freq:'daily',reminder:'8 PM',icon:'i-heart',streak:5,week:[1,1,1,0,1,1,null]},
@@ -1192,18 +1228,22 @@ function rotateQuote(){
   el.textContent='"'+getVibeMessage()+'"';
 }
 function updateAIBanner(){
-  const all=S.notes.filter(n=>n.ctx===S.ctx);
-  const tasks=all.filter(n=>n.type==='task'&&!n.done);
-  const lists=all.filter(n=>n.type==='list');
-  const listPending=lists.reduce((a,n)=>a+n.items.filter(i=>!i.d).length,0);
-  const totalPending=tasks.length+listPending;
-  const withReminder=all.filter(n=>n.reminder);
+  const all=S.notes.filter(n=>n.ctx===S.ctx&&!n.done);
+  const p0Items=all.filter(n=>n.pri===0);
+  const todayReminders=all.filter(n=>n.reminder&&(n.reminder.toLowerCase().includes('today')||n.reminder.toLowerCase().includes('tomorrow')||n.reminder.includes('9 AM')||n.reminder.includes('10 AM')));
+  const tasks=all.filter(n=>n.type==='task');
   let txt='';
-  if(totalPending>0){
-    const first=tasks[0]||lists.find(n=>n.items.some(i=>!i.d));
-    txt=`${totalPending} pending items. ${first?`Try "${first.title}" first.`:''}`;
-  }else if(withReminder.length){txt=`${withReminder.length} reminder${withReminder.length>1?'s':''} coming up. You're on track!`;}
-  else{txt=`All clear! Great time to capture new ideas.`;}
+  if(p0Items.length>0){
+    const names=p0Items.slice(0,2).map(n=>'"'+n.title+'"').join(', ');
+    txt=`🔴 ${p0Items.length} critical (P0): ${names}${p0Items.length>2?' +more':''}`;
+    // Warn about too many P0s
+    if(p0Items.length>3)txt+=` — consider re-prioritizing`;
+  }else if(todayReminders.length>0){
+    txt=`${todayReminders.length} due soon: "${todayReminders[0].title}"${todayReminders.length>1?' +'+( todayReminders.length-1)+' more':''}`;
+  }else if(tasks.length>0){
+    const first=sortItems(tasks)[0];
+    txt=`${tasks.length} tasks pending. Start with "${first.title}"?`;
+  }else{txt=`All clear! Great time to capture new ideas.`;}
   document.getElementById('aiBannerText').textContent=txt;
 }
 
@@ -1217,7 +1257,8 @@ function moveMulti(){openFP('move');}
 // BUILD TILE (notes + lists only — tasks rendered separately)
 function bTile(n,i){
   const pin=n.pin?'<div class="tile-pin"><svg><use href="#i-pin"/></svg></div>':'';
-  const badge=n.type==='list'?'<div class="tile-badge tile-badge-list">List</div>':'<div class="tile-badge tile-badge-note">Note</div>';
+  const typeBadge=n.type==='list'?'<div class="tile-badge tile-badge-list">List</div>':'<div class="tile-badge tile-badge-note">Note</div>';
+  const badge=typeBadge+(n.pri!==null&&n.pri!==undefined?priHtml(n.pri):'');
   const sel=S.multiMode;
   const isSelected=S.selected.has(n.id);
   const selCircle=`<div class="tile-select ${sel?'vis':''} ${isSelected?'on':''}" onclick="toggleSelect(event,'${n.id}')"><svg><use href="#i-check"/></svg></div>`;
@@ -1251,11 +1292,31 @@ function bTile(n,i){
 
 function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderTasks();renderNotes();renderGoals();}
 
+// SORT
+S.sortBy='priority';S.calSortBy='priority';
+function setSort(by,el){S.sortBy=by;document.querySelectorAll('#homeSort .sort-btn').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderTasks();renderNotes();}
+function setCalSort(by,el){S.calSortBy=by;el.parentElement.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderCal();}
+function sortItems(arr){
+  return [...arr].sort((a,b)=>{
+    if(S.sortBy==='priority'){
+      const pa=a.pri!==null&&a.pri!==undefined?a.pri:99;
+      const pb=b.pri!==null&&b.pri!==undefined?b.pri:99;
+      if(pa!==pb)return pa-pb;
+      // Within same priority, sort by time (shorter = more recent)
+      return (parseTime(a.time)||999)-(parseTime(b.time)||999);
+    }
+    return (parseTime(a.time)||999)-(parseTime(b.time)||999);
+  });
+}
+function parseTime(t){if(!t)return 999;const m=t.match(/(\d+)/);if(!m)return 999;const v=parseInt(m[1]);if(t.includes('h'))return v;if(t.includes('d'))return v*24;if(t.includes('now'))return 0;return v;}
+function priHtml(p){if(p===null||p===undefined)return '';return `<span class="pri pri-${p}">P${p}</span>`;}
+
+
 // TASKS (compact inline rows)
 S.taskInputOpen=false;S.showDoneTasks=false;
 function renderTasks(){
   const tasks=S.notes.filter(n=>n.type==='task'&&n.ctx===S.ctx);
-  const pending=tasks.filter(t=>!t.done);
+  const pending=sortItems(tasks.filter(t=>!t.done));
   const done=tasks.filter(t=>t.done);
   document.getElementById('taskCount').textContent=`${pending.length} pending`;
   let h='';
@@ -1267,7 +1328,7 @@ function renderTasks(){
     </div>`;
   }
   pending.forEach(t=>{
-    h+=`<div class="task-row" onclick="openNote('${t.id}')"><div class="task-chk" onclick="event.stopPropagation();toggleTask('${t.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text">${t.title}</div>${t.reminder?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${t.reminder}</div>`:''}</div></div>`;
+    h+=`<div class="task-row" onclick="openNote('${t.id}')"><div class="task-chk" onclick="event.stopPropagation();toggleTask('${t.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text">${priHtml(t.pri)} ${t.title}</div>${t.reminder?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${t.reminder}</div>`:''}</div></div>`;
   });
   if(done.length){
     h+=`<button class="show-done-cta ${S.showDoneTasks?'open':''}" onclick="S.showDoneTasks=!S.showDoneTasks;renderTasks()"><svg class="i-s"><use href="#i-right"/></svg>${done.length} completed</button>`;
@@ -1290,7 +1351,7 @@ function submitTask(){
   const title=inp?.value?.trim();
   if(!title){S.taskInputOpen=false;renderTasks();return;}
   const id='t'+Date.now();
-  S.notes.push({id,type:'task',title,body:'',ctx:S.ctx,folder:'Inbox',color:'default',pin:false,reminder:null,items:[],tags:[],time:'now',done:false});
+  S.notes.push({id,type:'task',title,body:'',ctx:S.ctx,folder:'Inbox',color:'default',pin:false,reminder:null,pri:null,items:[],tags:[],time:'now',done:false});
   inp.value='';
   // Keep input open for rapid entry
   renderTasks();
@@ -1539,7 +1600,7 @@ function renderGoalsFull(){
 
 // NOTES & LISTS (not tasks, hide done by default)
 function renderNotes(){
-  let notes=S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&!n.done);
+  let notes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&!n.done));
   const inFolder=S.currentFolder!=='All Notes';
   if(inFolder)notes=notes.filter(n=>n.folder===S.currentFolder);
   const grid=document.getElementById('noteGrid');
@@ -1572,10 +1633,18 @@ function renderNotes(){
 // EDITOR
 function renderEdMeta(n){
   const hue=getFolderHue(n.folder);
-  const chipBg=hue?hueToRGBA(hue,0.12):'var(--accent-glow)';
   const chipColor=hue||'var(--accent)';
-  document.getElementById('edMeta').innerHTML=`<svg class="i-s" style="color:var(--text-muted)"><use href="#i-clock"/></svg>${n.time==='now'?'Just now':n.time+' ago'}<div class="ed-folder-chip" onclick="openFP()"><svg style="color:${chipColor}"><use href="#i-folder"/></svg><span>${n.folder}</span><svg class="chip-arrow" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+  const priLabels=['P0','P1','P2','P3'];
+  const priColors=['#FF5A5A','#FFB86A','#6AB4FF','var(--text-dim)'];
+  const priBtns=priLabels.map((l,i)=>{
+    const sel=n.pri===i?'sel p'+i:'';
+    const c=n.pri===i?'color:#fff':'color:'+priColors[i];
+    return `<button class="ed-pri-btn ${sel}" style="${c}" onclick="setNotePri(${i})">${l}</button>`;
+  }).join('');
+  const priClear=n.pri!==null&&n.pri!==undefined?`<button class="ed-pri-btn" style="color:var(--text-muted);font-size:10px" onclick="setNotePri(null)">✕</button>`:'';
+  document.getElementById('edMeta').innerHTML=`<svg class="i-s" style="color:var(--text-muted)"><use href="#i-clock"/></svg>${n.time==='now'?'Just now':n.time+' ago'}<div class="ed-folder-chip" onclick="openFP()"><svg style="color:${chipColor}"><use href="#i-folder"/></svg><span>${n.folder}</span><svg class="chip-arrow" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="ed-pri">${priBtns}${priClear}</div>`;
 }
+function setNotePri(p){const n=S.notes.find(x=>x.id===S.noteId);if(n){n.pri=p;renderEdMeta(n);toast(p!==null?'Priority set to P'+p:'Priority removed');}}
 
 function openNote(id){
   const n=S.notes.find(x=>x.id===id);if(!n)return;
@@ -1597,7 +1666,7 @@ function openNew(type){
   closeFab();
   const id='n'+Date.now(),isCheck=type==='list';
   const folder=(S.currentFolder!=='All Notes')?S.currentFolder:'Inbox';
-  S.notes.unshift({id,type:type,title:'',body:'',ctx:S.ctx,folder,color:'default',pin:false,reminder:null,items:isCheck?[{id:'i1',t:'',d:false}]:[],tags:[],time:'now'});
+  S.notes.unshift({id,type:type,title:'',body:'',ctx:S.ctx,folder,color:'default',pin:false,reminder:null,pri:null,items:isCheck?[{id:'i1',t:'',d:false}]:[],tags:[],time:'now'});
   S.noteId=id;
   const n=S.notes[0];
   document.getElementById('edTitle').value='';document.getElementById('edBody').value='';
@@ -1805,17 +1874,23 @@ function renderCal(){
   for(let i=0;i<firstDay;i++)h+=`<div class="cal-day"></div>`;
   const eventDays=[13,14,18,20,27];
   for(let d=1;d<=30;d++){
-    const today=d===13,hasEv=eventDays.includes(d);
+    const today=d===14,hasEv=eventDays.includes(d);
     h+=`<div class="cal-day ${today?'today':''} ${hasEv?'has-event':''}">${d}</div>`;
   }
   g.innerHTML=h;
-  // Pull reminders from all items (notes, lists, tasks, goals)
-  const allRems=S.notes.filter(n=>n.reminder).map(n=>({title:n.title,time:n.reminder,color:getFolderHue(n.folder)||'var(--accent)',type:n.type}));
-  const goalRems=S.goals[S.ctx].filter(g=>g.reminder).map(g=>({title:g.name,time:g.reminder,color:g.color,type:'goal'}));
-  const rems=[...allRems,...goalRems];
+  // Pull reminders — filter by context
+  const ctxNotes=S.notes.filter(n=>n.ctx===S.ctx&&n.reminder);
+  const allRems=ctxNotes.map(n=>({title:n.title,time:n.reminder,color:getFolderHue(n.folder)||'var(--accent)',type:n.type,pri:n.pri}));
+  const goalRems=S.goals[S.ctx].filter(g=>g.reminder).map(g=>({title:g.name,time:g.reminder,color:g.color,type:'goal',pri:null}));
+  let rems=[...allRems,...goalRems];
+  // Sort
+  if(S.calSortBy==='priority'){
+    rems.sort((a,b)=>{const pa=a.pri!==null&&a.pri!==undefined?a.pri:99;const pb=b.pri!==null&&b.pri!==undefined?b.pri:99;return pa-pb;});
+  }
   document.getElementById('calEvents').innerHTML=rems.map(r=>{
     const typeLabel=r.type==='task'?'Task':r.type==='goal'?'Goal':r.type==='list'?'List':'Note';
-    return `<div class="cal-event"><div class="cal-event-dot" style="background:${r.color}"></div><div class="cal-event-info"><div class="cal-event-title">${r.title}</div><div class="cal-event-time">${r.time} · ${typeLabel}</div></div><svg class="i-s" style="color:var(--text-muted)"><use href="#i-right"/></svg></div>`;
+    const priBadge=r.pri!==null&&r.pri!==undefined?priHtml(r.pri):'';
+    return `<div class="cal-event"><div class="cal-event-dot" style="background:${r.color}"></div><div class="cal-event-info"><div class="cal-event-title" style="display:flex;align-items:center;gap:6px">${r.title}${priBadge}</div><div class="cal-event-time">${r.time} · ${typeLabel}</div></div><svg class="i-s" style="color:var(--text-muted)"><use href="#i-right"/></svg></div>`;
   }).join('')||'<div style="padding:16px;color:var(--text-muted);font-size:13px">No reminders</div>';
 }
 
