@@ -1942,7 +1942,7 @@ function newFolderFromPicker(){
 function closeEditor(){
   const n=S.notes.find(x=>x.id===S.noteId);
   if(n){n.title=document.getElementById('edTitle').value;n.body=document.getElementById('edBody').value;if(!n.title&&!n.body&&!n.items.length)S.notes=S.notes.filter(x=>x.id!==n.id);}
-  hideAI();hideSlash();S.noteId=null;renderAll();nav('home');
+  hideAI();hideSlash();S.noteId=null;nav('home');renderAll();
 }
 
 // CHECKLIST EDITOR
