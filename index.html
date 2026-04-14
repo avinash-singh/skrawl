@@ -404,6 +404,43 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 .goal-full-rem{font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px;margin-top:3px}
 .goal-full-rem svg{width:11px;height:11px}
 
+/* AI Goal helper */
+.goal-ai-card{margin:0 20px 14px;padding:14px 16px;border-radius:var(--r-lg);background:var(--gradient1);position:relative;overflow:hidden;cursor:pointer;display:flex;align-items:center;gap:12px;transition:transform .15s}
+.goal-ai-card:hover{transform:scale(1.01)}
+.goal-ai-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 90% 30%,rgba(255,255,255,0.12),transparent 60%)}
+.goal-ai-left{flex:1;position:relative;z-index:1}
+.goal-ai-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:-.1px}
+.goal-ai-sub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px}
+.goal-ai-icon{width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1}
+.goal-ai-icon svg{width:18px;height:18px;stroke:#fff;fill:none}
+
+/* Goal type chips */
+.goal-types{display:flex;gap:6px;overflow-x:auto;padding:0 20px 14px;scrollbar-width:none}
+.goal-types::-webkit-scrollbar{display:none}
+.goal-type-chip{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-full);border:1px solid var(--border);background:var(--bg-card);color:var(--text-dim);font:600 12px/1 'Inter',sans-serif;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.goal-type-chip:hover{border-color:var(--border2);color:var(--text)}
+.goal-type-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.goal-type-chip svg{width:14px;height:14px}
+
+/* AI suggested goals */
+.ai-goal-sug{padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);margin:0 20px 8px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.ai-goal-sug:hover{border-color:var(--accent);background:var(--accent-glow)}
+.ai-goal-sug-icon{width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-goal-sug-icon svg{width:18px;height:18px;stroke:#fff;fill:none}
+.ai-goal-sug-info{flex:1}
+.ai-goal-sug-name{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.1px}
+.ai-goal-sug-desc{font-size:11px;color:var(--text-muted);margin-top:2px}
+.ai-goal-sug-add{color:var(--accent);font-size:11px;font-weight:600}
+
+/* Recently opened in search */
+.recent-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity .15s}
+.recent-item:hover{opacity:.7}
+.recent-ico{width:32px;height:32px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.recent-ico svg{width:15px;height:15px;stroke:#fff;fill:none}
+.recent-info{flex:1;min-width:0}
+.recent-title{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.1px}
+.recent-meta{font-size:11px;color:var(--text-muted)}
+
 /* Calorie/fitness special display */
 .goal-big-num{font-size:22px;font-weight:800;letter-spacing:-.5px;line-height:1}
 .goal-big-unit{font-size:11px;font-weight:500;color:var(--text-muted);margin-top:1px}
@@ -842,8 +879,31 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
       <button class="ibtn" onclick="toast('New goal created')"><svg class="i"><use href="#i-plus"/></svg></button>
     </div>
   </div>
+  <!-- AI Insight for goals -->
+  <div id="goalsAIInsight"></div>
+
+  <!-- AI Goal Helper -->
+  <div class="goal-ai-card" onclick="showGoalHelper()">
+    <div class="goal-ai-left">
+      <div class="goal-ai-title">AI Goal Assistant</div>
+      <div class="goal-ai-sub">Get personalized goal suggestions</div>
+    </div>
+    <div class="goal-ai-icon"><svg><use href="#i-sparkles"/></svg></div>
+  </div>
+
   <!-- Summary -->
   <div id="goalsSummary"></div>
+
+  <!-- Goal type filter chips -->
+  <div class="goal-types" id="goalTypeChips">
+    <button class="goal-type-chip on" onclick="setGoalType('all',this)"><svg><use href="#i-target"/></svg>All</button>
+    <button class="goal-type-chip" onclick="setGoalType('health',this)"><svg><use href="#i-heart"/></svg>Health</button>
+    <button class="goal-type-chip" onclick="setGoalType('fitness',this)"><svg><use href="#i-target"/></svg>Fitness</button>
+    <button class="goal-type-chip" onclick="setGoalType('learning',this)"><svg><use href="#i-file"/></svg>Learning</button>
+    <button class="goal-type-chip" onclick="setGoalType('finance',this)"><svg><use href="#i-briefcase"/></svg>Finance</button>
+    <button class="goal-type-chip" onclick="setGoalType('productivity',this)"><svg><use href="#i-check-sq"/></svg>Work</button>
+  </div>
+
   <!-- Period Tabs -->
   <div class="period-tabs">
     <button class="period-tab on" onclick="setGoalPeriod('All',this)">All</button>
@@ -851,8 +911,18 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
     <button class="period-tab" onclick="setGoalPeriod('Weekly',this)">Weekly</button>
     <button class="period-tab" onclick="setGoalPeriod('Monthly',this)">Monthly</button>
   </div>
+
   <!-- Goal list -->
   <div id="goalsFiltered" style="padding-bottom:120px"></div>
+
+  <!-- AI Goal Helper Sheet -->
+  <div class="fe-ov" id="goalHelperOv" onclick="closeGoalHelper(event)">
+    <div class="fe-sheet" onclick="event.stopPropagation()" style="max-height:75%">
+      <div class="fe-handle"></div>
+      <div class="fe-title" id="goalHelperTitle">AI Goal Assistant</div>
+      <div id="goalHelperContent" style="padding:0 20px 20px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== CALENDAR ===== -->
@@ -1073,18 +1143,18 @@ notes:[
   {id:'t6',type:'task',title:'Review PR #342',body:'',ctx:'business',folder:'Work',color:'default',pin:false,reminder:null,pri:2,items:[],tags:[],time:'3h',done:true},
 ],
 goals:{personal:[
-  {name:'Calorie Intake',done:1800,total:2200,unit:'cal',color:'#FF6AC2',period:'Daily',freq:'daily',reminder:'8 PM',icon:'i-heart',streak:5,week:[1,1,1,0,1,1,null]},
-  {name:'Exercise',done:35,total:45,unit:'min',color:'#6AFFCB',period:'Daily',freq:'daily',reminder:'7 AM',icon:'i-target',streak:12,week:[1,1,1,1,1,1,null]},
-  {name:'Gym sessions',done:3,total:5,unit:'',color:'#34D399',period:'Weekly',freq:'5x/week',reminder:'Sun 8 PM',icon:'i-target',streak:3,week:[1,0,1,0,1,0,null]},
-  {name:'Read',done:2,total:4,unit:'books',color:'#B06AFF',period:'Monthly',freq:'monthly',reminder:null,icon:'i-file',streak:2,week:[1,1,0,0,0,1,null]},
-  {name:'Meditate',done:5,total:7,unit:'days',color:'#FFB86A',period:'Weekly',freq:'daily',reminder:'7 AM',icon:'i-moon',streak:5,week:[1,1,1,0,1,1,null]},
-  {name:'Save',done:320,total:500,unit:'$',color:'#6AB4FF',period:'Monthly',freq:'monthly',reminder:null,icon:'i-target',streak:0,week:[1,0,1,1,0,0,null]},
+  {name:'Calorie Intake',done:1800,total:2200,unit:'cal',color:'#FF6AC2',period:'Daily',freq:'daily',reminder:'8 PM',icon:'i-heart',streak:5,week:[1,1,1,0,1,1,null],cat:'health'},
+  {name:'Exercise',done:35,total:45,unit:'min',color:'#6AFFCB',period:'Daily',freq:'daily',reminder:'7 AM',icon:'i-target',streak:12,week:[1,1,1,1,1,1,null],cat:'fitness'},
+  {name:'Gym sessions',done:3,total:5,unit:'',color:'#34D399',period:'Weekly',freq:'5x/week',reminder:'Sun 8 PM',icon:'i-target',streak:3,week:[1,0,1,0,1,0,null],cat:'fitness'},
+  {name:'Read',done:2,total:4,unit:'books',color:'#B06AFF',period:'Monthly',freq:'monthly',reminder:null,icon:'i-file',streak:2,week:[1,1,0,0,0,1,null],cat:'learning'},
+  {name:'Meditate',done:5,total:7,unit:'days',color:'#FFB86A',period:'Weekly',freq:'daily',reminder:'7 AM',icon:'i-moon',streak:5,week:[1,1,1,0,1,1,null],cat:'health'},
+  {name:'Save',done:320,total:500,unit:'$',color:'#6AB4FF',period:'Monthly',freq:'monthly',reminder:null,icon:'i-target',streak:0,week:[1,0,1,1,0,0,null],cat:'finance'},
 ],business:[
-  {name:'Ship v2 API',done:6,total:10,unit:'tasks',color:'#6AB4FF',period:'Monthly',freq:'monthly',reminder:'Fri 5 PM',icon:'i-target',streak:0,week:[1,0,1,0,1,1,null]},
-  {name:'1:1s',done:2,total:4,unit:'',color:'#6AFFCB',period:'Weekly',freq:'weekly',reminder:'Mon 9 AM',icon:'i-user',streak:2,week:[1,0,0,1,0,0,null]},
-  {name:'Review PRs',done:3,total:3,unit:'',color:'#7C6AFF',period:'Daily',freq:'daily',reminder:null,icon:'i-check-sq',streak:7,week:[1,1,1,1,1,1,null]},
-  {name:'Zero inbox',done:12,total:20,unit:'emails',color:'#FF6AC2',period:'Weekly',freq:'3x/week',reminder:null,icon:'i-inbox',streak:0,week:[1,1,0,1,0,0,null]},
-  {name:'Standups',done:4,total:5,unit:'',color:'#FFB86A',period:'Weekly',freq:'5x/week',reminder:'9:30 AM',icon:'i-briefcase',streak:4,week:[1,1,1,0,1,0,null]},
+  {name:'Ship v2 API',done:6,total:10,unit:'tasks',color:'#6AB4FF',period:'Monthly',freq:'monthly',reminder:'Fri 5 PM',icon:'i-target',streak:0,week:[1,0,1,0,1,1,null],cat:'productivity'},
+  {name:'1:1s',done:2,total:4,unit:'',color:'#6AFFCB',period:'Weekly',freq:'weekly',reminder:'Mon 9 AM',icon:'i-user',streak:2,week:[1,0,0,1,0,0,null],cat:'productivity'},
+  {name:'Review PRs',done:3,total:3,unit:'',color:'#7C6AFF',period:'Daily',freq:'daily',reminder:null,icon:'i-check-sq',streak:7,week:[1,1,1,1,1,1,null],cat:'productivity'},
+  {name:'Zero inbox',done:12,total:20,unit:'emails',color:'#FF6AC2',period:'Weekly',freq:'3x/week',reminder:null,icon:'i-inbox',streak:0,week:[1,1,0,1,0,0,null],cat:'productivity'},
+  {name:'Standups',done:4,total:5,unit:'',color:'#FFB86A',period:'Weekly',freq:'5x/week',reminder:'9:30 AM',icon:'i-briefcase',streak:4,week:[1,1,1,0,1,0,null],cat:'productivity'},
 ]},
 folders:{personal:[
   {n:'All Notes',ico:'i-file',hue:null},
@@ -1520,11 +1590,123 @@ function renderGoals(){
 }
 
 // GOALS FULL VIEW
-S.goalPeriod='All';
+S.goalPeriod='All';S.goalType='all';S.recentlyOpened=[];
 function setGoalPeriod(p,el){S.goalPeriod=p;document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderGoalsFull();}
+function setGoalType(t,el){S.goalType=t;document.querySelectorAll('.goal-type-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderGoalsFull();}
+
+// AI Goal insight
+function renderGoalAIInsight(){
+  const g=S.goals[S.ctx];
+  const behind=g.filter(x=>x.done/x.total<0.4);
+  const onFire=g.filter(x=>x.streak>=5);
+  const el=document.getElementById('goalsAIInsight');
+  let txt='';
+  if(behind.length>0){txt=`⚠️ "${behind[0].name}" is behind (${Math.round(behind[0].done/behind[0].total*100)}%). ${behind.length>1?behind.length+' goals need attention.':'Focus here today.'}`;}
+  else if(onFire.length>0){txt=`🔥 ${onFire.length} goal${onFire.length>1?'s':''} on fire! "${onFire[0].name}" has a ${onFire[0].streak}-day streak.`;}
+  else{txt=`All goals progressing well. Keep the momentum!`;}
+  el.innerHTML=`<div style="margin:0 20px 12px;padding:10px 14px;border-radius:var(--r-md);background:var(--bg-card);border:1px solid var(--border);font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:10px"><svg class="i-s" style="color:var(--accent);flex-shrink:0"><use href="#i-sparkles"/></svg><span>${txt}</span></div>`;
+}
+
+// Goal helper
+function showGoalHelper(){
+  document.getElementById('goalHelperOv').classList.add('vis');
+  document.getElementById('goalHelperTitle').textContent='AI Goal Assistant';
+  const isPersonal=S.ctx==='personal';
+  document.getElementById('goalHelperContent').innerHTML=`
+    <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Choose a goal type and I'll suggest personalized targets.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+      ${isPersonal?`
+      <button class="goal-type-chip on" onclick="showGoalSuggestions('health')"><svg><use href="#i-heart"/></svg>Health</button>
+      <button class="goal-type-chip" onclick="showGoalSuggestions('fitness')"><svg><use href="#i-target"/></svg>Fitness</button>
+      <button class="goal-type-chip" onclick="showGoalSuggestions('learning')"><svg><use href="#i-file"/></svg>Learning</button>
+      <button class="goal-type-chip" onclick="showGoalSuggestions('finance')"><svg><use href="#i-target"/></svg>Finance</button>
+      <button class="goal-type-chip" onclick="showGoalSuggestions('mindfulness')"><svg><use href="#i-moon"/></svg>Mindfulness</button>
+      `:`
+      <button class="goal-type-chip on" onclick="showGoalSuggestions('productivity')"><svg><use href="#i-check-sq"/></svg>Productivity</button>
+      <button class="goal-type-chip" onclick="showGoalSuggestions('team')"><svg><use href="#i-user"/></svg>Team</button>
+      <button class="goal-type-chip" onclick="showGoalSuggestions('learning')"><svg><use href="#i-file"/></svg>Learning</button>
+      `}
+    </div>
+    <div id="goalSugList"></div>
+  `;
+  showGoalSuggestions(isPersonal?'health':'productivity');
+}
+
+function showGoalSuggestions(type){
+  document.querySelectorAll('#goalHelperContent .goal-type-chip').forEach(c=>c.classList.remove('on'));
+  event?.target?.closest?.('.goal-type-chip')?.classList.add('on');
+  const sugs={
+    health:[
+      {name:'Daily Calorie Target',desc:'Based on your profile: 2,200 cal/day recommended',color:'#FF6AC2',icon:'i-heart',input:true},
+      {name:'Drink Water',desc:'8 glasses (2L) per day',color:'#6AB4FF',icon:'i-heart'},
+      {name:'Sleep 8 hours',desc:'Track daily sleep duration',color:'#B06AFF',icon:'i-moon'},
+      {name:'Reduce Screen Time',desc:'Under 3 hours of non-work screen time',color:'#FFB86A',icon:'i-target'},
+    ],
+    fitness:[
+      {name:'Exercise 45 min/day',desc:'Mix of cardio and strength training',color:'#6AFFCB',icon:'i-target'},
+      {name:'10,000 Steps',desc:'Daily step goal synced from Apple Health',color:'#34D399',icon:'i-target'},
+      {name:'Gym 5x/week',desc:'Consistent gym sessions',color:'#6AFFCB',icon:'i-target'},
+      {name:'Run 5K',desc:'Build up to a 5K run this month',color:'#FFB86A',icon:'i-target'},
+    ],
+    learning:[
+      {name:'Read 30 min/day',desc:'Build a daily reading habit',color:'#B06AFF',icon:'i-file'},
+      {name:'Complete Online Course',desc:'Finish 1 course per month',color:'#6AB4FF',icon:'i-file'},
+      {name:'Learn New Skill',desc:'Practice 20 min/day',color:'#FFB86A',icon:'i-target'},
+    ],
+    finance:[
+      {name:'Save $500/month',desc:'Automated savings goal',color:'#6AB4FF',icon:'i-target'},
+      {name:'Track Expenses',desc:'Log expenses daily',color:'#FFB86A',icon:'i-target'},
+      {name:'No Impulse Buys',desc:'Wait 48 hours before non-essential purchases',color:'#FF6AC2',icon:'i-target'},
+    ],
+    mindfulness:[
+      {name:'Meditate 10 min/day',desc:'Guided or unguided meditation',color:'#FFB86A',icon:'i-moon'},
+      {name:'Journal Daily',desc:'Write 3 things you are grateful for',color:'#B06AFF',icon:'i-file'},
+      {name:'Digital Detox',desc:'1 hour device-free before bed',color:'#6AFFCB',icon:'i-moon'},
+    ],
+    productivity:[
+      {name:'Zero Inbox',desc:'Clear inbox by end of day',color:'#FF6AC2',icon:'i-inbox'},
+      {name:'Complete All 1:1s',desc:'Don not skip any scheduled 1:1s',color:'#6AFFCB',icon:'i-user'},
+      {name:'Ship Weekly',desc:'Deploy at least once per week',color:'#6AB4FF',icon:'i-target'},
+      {name:'Code Review Daily',desc:'Review at least 1 PR per day',color:'#7C6AFF',icon:'i-check-sq'},
+    ],
+    team:[
+      {name:'Give Feedback Weekly',desc:'Share constructive feedback with 2+ team members',color:'#6AFFCB',icon:'i-user'},
+      {name:'Mentoring Sessions',desc:'2 sessions per month',color:'#B06AFF',icon:'i-user'},
+      {name:'Team Morale Check',desc:'Weekly pulse survey or 1:1',color:'#FFB86A',icon:'i-heart'},
+    ],
+  };
+  const list=sugs[type]||[];
+  let h='';
+  if(type==='health'&&S.ctx==='personal'){
+    h+=`<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px">Your profile helps AI tailor goals:</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:70px"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Age</div><input style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-input);border-radius:var(--r-sm);font:500 13px/1 'Inter',sans-serif;color:var(--text);outline:none" value="30" placeholder="Age"/></div>
+      <div style="flex:1;min-width:70px"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Weight</div><input style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-input);border-radius:var(--r-sm);font:500 13px/1 'Inter',sans-serif;color:var(--text);outline:none" value="75 kg" placeholder="kg"/></div>
+      <div style="flex:1;min-width:70px"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Sex</div><select style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-input);border-radius:var(--r-sm);font:500 13px/1 'Inter',sans-serif;color:var(--text);outline:none"><option>Male</option><option>Female</option></select></div>
+      <div style="flex:1;min-width:70px"><div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Activity</div><select style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-input);border-radius:var(--r-sm);font:500 13px/1 'Inter',sans-serif;color:var(--text);outline:none"><option>Moderate</option><option>Sedentary</option><option>Active</option></select></div>
+    </div>`;
+  }
+  h+=`<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px">Suggested goals:</div>`;
+  h+=list.map(s=>`
+    <div class="ai-goal-sug" onclick="addSuggestedGoal('${s.name}','${s.color}');closeGoalHelper()">
+      <div class="ai-goal-sug-icon" style="background:${s.color}"><svg><use href="#${s.icon}"/></svg></div>
+      <div class="ai-goal-sug-info"><div class="ai-goal-sug-name">${s.name}</div><div class="ai-goal-sug-desc">${s.desc}</div></div>
+      <span class="ai-goal-sug-add">+ Add</span>
+    </div>
+  `).join('');
+  document.getElementById('goalSugList').innerHTML=h;
+}
+
+function addSuggestedGoal(name,color){
+  S.goals[S.ctx].push({name,done:0,total:1,unit:'',color,period:'Daily',freq:'daily',reminder:null,icon:'i-target',streak:0,week:[null,null,null,null,null,null,null],cat:'health'});
+  toast('Goal "'+name+'" added!');
+  renderGoalsFull();
+}
+function closeGoalHelper(e){if(e&&e.target!==e.currentTarget)return;document.getElementById('goalHelperOv').classList.remove('vis');}
 
 function renderGoalsFull(){
   const g=S.goals[S.ctx];
+  renderGoalAIInsight();
 
   // Sync ctx toggles
   const pillG=document.getElementById('ctxPillG');
@@ -1560,8 +1742,9 @@ function renderGoalsFull(){
       <div class="goal-summary-bar"><div class="goal-bar"><div class="goal-bar-fill" style="width:${overallPct}%;background:var(--gradient1)"></div></div></div>
     </div>`;
 
-  // Filter by period
-  const filtered=S.goalPeriod==='All'?g:g.filter(x=>x.period===S.goalPeriod);
+  // Filter by period and type
+  let filtered=S.goalPeriod==='All'?g:g.filter(x=>x.period===S.goalPeriod);
+  if(S.goalType!=='all')filtered=filtered.filter(x=>x.cat===S.goalType);
   const days=['M','T','W','T','F','S','S'];
   const el=document.getElementById('goalsFiltered');
 
@@ -1659,6 +1842,10 @@ function setNotePri(p){const n=S.notes.find(x=>x.id===S.noteId);if(n){n.pri=p;re
 function openNote(id){
   const n=S.notes.find(x=>x.id===id);if(!n)return;
   S.noteId=id;closeFab();
+  // Track recently opened
+  S.recentlyOpened=S.recentlyOpened.filter(x=>x!==id);
+  S.recentlyOpened.unshift(id);
+  if(S.recentlyOpened.length>10)S.recentlyOpened.length=10;
   document.getElementById('edTitle').value=n.title;
   document.getElementById('edBody').value=n.body;
   document.getElementById('edCtxLbl').textContent=n.ctx==='personal'?'Personal':'Business';
@@ -1863,7 +2050,23 @@ S.searchFilter='all';S.searchIncludeDone=false;
 function setSearchFilter(f,el){S.searchFilter=f;document.querySelectorAll('.search-filter').forEach(b=>b.classList.remove('on'));el.classList.add('on');onSearch();}
 function toggleDoneFilter(){S.searchIncludeDone=document.getElementById('doneFilterCb').checked;onSearch();}
 function onSearch(){const q=document.getElementById('searchIn').value.toLowerCase().trim(),el=document.getElementById('searchRes');
-if(!q){el.innerHTML=['meeting','budget','grocery'].map(w=>`<div style="padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--text-dim);font-size:14px" onclick="document.getElementById('searchIn').value='${w}';onSearch()"><svg class="i-s" style="vertical-align:-3px;margin-right:8px;color:var(--text-muted)"><use href="#i-clock"/></svg>${w}</div>`).join('');return;}
+if(!q){
+  // Show recently opened
+  let h='';
+  if(S.recentlyOpened.length){
+    h+=`<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Recently Opened</div>`;
+    h+=S.recentlyOpened.slice(0,5).map(id=>{
+      const n=S.notes.find(x=>x.id===id);if(!n)return '';
+      const typeColors={note:'var(--accent)',list:'var(--accent4)',task:'var(--accent3)'};
+      const typeIcons={note:'i-file',list:'i-check-sq',task:'i-check'};
+      const typeLbl=n.type==='task'?'Task':n.type==='list'?'List':'Note';
+      return `<div class="recent-item" onclick="openNote('${n.id}')"><div class="recent-ico" style="background:${typeColors[n.type]||'var(--accent)'}"><svg><use href="#${typeIcons[n.type]||'i-file'}"/></svg></div><div class="recent-info"><div class="recent-title">${n.title||'Untitled'}</div><div class="recent-meta">${typeLbl} · ${n.time} ago · ${n.folder}</div></div></div>`;
+    }).join('');
+  }
+  h+=`<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px">Suggested</div>`;
+  h+=['meeting','budget','grocery'].map(w=>`<div style="padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--text-dim);font-size:14px" onclick="document.getElementById('searchIn').value='${w}';onSearch()"><svg class="i-s" style="vertical-align:-3px;margin-right:8px;color:var(--text-muted)"><use href="#i-search"/></svg>${w}</div>`).join('');
+  el.innerHTML=h;return;
+}
 let pool=S.notes;
 if(!S.searchIncludeDone)pool=pool.filter(n=>!n.done);
 if(S.searchFilter!=='all')pool=pool.filter(n=>n.type===S.searchFilter);
