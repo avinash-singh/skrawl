@@ -134,6 +134,20 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   .scr{bottom:0!important}
 }
 
+/* Layout toggle */
+.lt-btn{position:fixed;bottom:14px;left:14px;z-index:9999;padding:7px 14px;border-radius:var(--r-full);border:1px solid var(--border2);background:var(--bg-elevated);color:var(--text-dim);font:600 12px/1 'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;box-shadow:var(--shadow)}
+.lt-btn:hover{background:var(--bg-card-hover);color:var(--text)}
+.lt-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* Mobile preview mode */
+.app.mobile-preview{max-width:393px;height:852px;margin:20px auto;border-radius:40px;overflow:hidden;box-shadow:0 0 0 2px #222,0 0 0 4px #111,var(--shadow-lg)}
+.app.mobile-preview .desk-sidebar{display:none!important}
+.app.mobile-preview .tbar{display:flex!important}
+.app.mobile-preview .sbar{display:flex!important}
+.app.mobile-preview .scr{top:54px!important}
+.app.mobile-preview .note-grid{column-count:2!important}
+.app.mobile-preview .mic-fab{bottom:100px!important;right:20px!important}
+
 /* ===== ICONS ===== */
 .i{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0}
 .i-s{width:16px;height:16px}.i-l{width:24px;height:24px}
@@ -2273,6 +2287,13 @@ document.addEventListener('keydown',e=>{
   }
 });
 
+// LAYOUT TOGGLE
+function toggleLayout(){
+  document.querySelector('.app').classList.toggle('mobile-preview');
+  const isMobile=document.querySelector('.app').classList.contains('mobile-preview');
+  document.getElementById('ltLabel').textContent=isMobile?'Desktop':'Mobile';
+}
+
 // INIT
 loadState();
 initCP();renderAll();onSearch();renderDeskSidebar();
@@ -2283,6 +2304,11 @@ document.getElementById('vibeSlider')&&(document.getElementById('vibeSlider').va
 
 </div><!-- /main-area -->
 </div><!-- /app -->
+
+<button class="lt-btn" onclick="toggleLayout()">
+  <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-width="2"/></svg>
+  <span id="ltLabel">Mobile</span>
+</button>
 
 </body>
 </html>
