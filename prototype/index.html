@@ -126,7 +126,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 /* Goals Section */
 .goals-section{padding:0 20px 16px}
 .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.sec-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px}
+.sec-title{font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.4px}
 .sec-link{font-size:12px;font-weight:600;color:var(--accent);cursor:pointer}
 
 .goals-scroll{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -344,8 +344,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 .tp-time{color:var(--text-muted);font-size:10px}
 
 /* Pinned label */
-.pin-label{display:flex;align-items:center;gap:6px;margin-bottom:10px;column-span:all}
+.pin-label{display:flex;align-items:center;gap:6px;margin-bottom:10px;column-span:all;padding-left:0}
 .pin-label svg{width:13px;height:13px;color:var(--accent)}
+.sub-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px}
 
 /* ===== MIC FAB (bottom-right, accent) ===== */
 .mic-fab{position:absolute;bottom:100px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--gradient1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;box-shadow:0 4px 20px rgba(124,106,255,0.35);transition:all .2s cubic-bezier(.34,1.56,.64,1)}
@@ -894,7 +895,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
     <button class="search-filter" onclick="setSearchFilter('note',this)">Notes</button>
     <button class="search-filter" onclick="setSearchFilter('list',this)">Lists</button>
     <button class="search-filter" onclick="setSearchFilter('task',this)">Tasks</button>
-    <button class="search-filter" onclick="setSearchFilter('done',this)">Done</button>
+    <label style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r-full);border:1px solid var(--border);cursor:pointer;font:500 12px/1 'Inter',sans-serif;color:var(--text-dim);transition:all .15s" id="doneFilterLabel">
+      <input type="checkbox" id="doneFilterCb" onchange="toggleDoneFilter()" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer"/>
+      Include completed
+    </label>
   </div>
   <div id="searchRes" style="padding:0 20px"></div>
 </div>
@@ -1313,7 +1317,7 @@ function priHtml(p){if(p===null||p===undefined)return '';return `<span class="pr
 
 
 // TASKS (compact inline rows)
-S.taskInputOpen=false;S.showDoneTasks=false;
+S.taskInputOpen=false;S.showDoneTasks=false;S.showDoneNotes=false;
 function renderTasks(){
   const tasks=S.notes.filter(n=>n.type==='task'&&n.ctx===S.ctx);
   const pending=sortItems(tasks.filter(t=>!t.done));
@@ -1601,8 +1605,9 @@ function renderGoalsFull(){
 // NOTES & LISTS (not tasks, hide done by default)
 function renderNotes(){
   let notes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&!n.done));
+  let doneNotes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&n.done));
   const inFolder=S.currentFolder!=='All Notes';
-  if(inFolder)notes=notes.filter(n=>n.folder===S.currentFolder);
+  if(inFolder){notes=notes.filter(n=>n.folder===S.currentFolder);doneNotes=doneNotes.filter(n=>n.folder===S.currentFolder);}
   const grid=document.getElementById('noteGrid');
   const fvh=document.getElementById('folderViewHeader');
 
@@ -1622,11 +1627,16 @@ function renderNotes(){
     document.getElementById('gridLabel').textContent=`${notes.length} Notes & Lists`;
   }
 
-  if(!notes.length){grid.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No notes yet. Tap + to start.</div>';return;}
+  if(!notes.length&&!doneNotes.length){grid.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No notes yet. Tap + to start.</div>';return;}
   const pinned=notes.filter(n=>n.pin),rest=notes.filter(n=>!n.pin);
   let h='';
-  if(pinned.length){h+=`<div class="pin-label sec-title"><svg class="i-s" style="color:var(--accent)"><use href="#i-pin"/></svg>Pinned</div>`;h+=pinned.map((n,i)=>bTile(n,i)).join('');}
-  if(rest.length){if(pinned.length)h+=`<div class="sec-title" style="column-span:all;margin:8px 0 10px">Others</div>`;h+=rest.map((n,i)=>bTile(n,i+pinned.length)).join('');}
+  if(pinned.length){h+=`<div class="pin-label sub-label"><svg class="i-s" style="color:var(--accent)"><use href="#i-pin"/></svg>Pinned</div>`;h+=pinned.map((n,i)=>bTile(n,i)).join('');}
+  if(rest.length){if(pinned.length)h+=`<div class="sub-label" style="column-span:all;margin:8px 0 10px">Others</div>`;h+=rest.map((n,i)=>bTile(n,i+pinned.length)).join('');}
+  // Done notes/lists
+  if(doneNotes.length){
+    h+=`<div style="column-span:all;margin:12px 0 6px"><button class="show-done-cta ${S.showDoneNotes?'open':''}" onclick="S.showDoneNotes=!S.showDoneNotes;renderNotes()"><svg class="i-s"><use href="#i-right"/></svg>${doneNotes.length} completed</button></div>`;
+    if(S.showDoneNotes){h+=doneNotes.map((n,i)=>bTile(n,i)).join('');}
+  }
   grid.innerHTML=h;
 }
 
@@ -1849,13 +1859,14 @@ function actLock(){closeAS();toast('Locked with Face ID');}
 function actDel(){S.notes=S.notes.filter(x=>x.id!==S.asNoteId);closeAS();if(S.screen==='editor'){S.noteId=null;nav('home');}renderAll();toast('Deleted');}
 
 // SEARCH
-S.searchFilter='all';
+S.searchFilter='all';S.searchIncludeDone=false;
 function setSearchFilter(f,el){S.searchFilter=f;document.querySelectorAll('.search-filter').forEach(b=>b.classList.remove('on'));el.classList.add('on');onSearch();}
+function toggleDoneFilter(){S.searchIncludeDone=document.getElementById('doneFilterCb').checked;onSearch();}
 function onSearch(){const q=document.getElementById('searchIn').value.toLowerCase().trim(),el=document.getElementById('searchRes');
 if(!q){el.innerHTML=['meeting','budget','grocery'].map(w=>`<div style="padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--text-dim);font-size:14px" onclick="document.getElementById('searchIn').value='${w}';onSearch()"><svg class="i-s" style="vertical-align:-3px;margin-right:8px;color:var(--text-muted)"><use href="#i-clock"/></svg>${w}</div>`).join('');return;}
 let pool=S.notes;
-if(S.searchFilter==='done')pool=pool.filter(n=>n.done);
-else if(S.searchFilter!=='all')pool=pool.filter(n=>n.type===S.searchFilter);
+if(!S.searchIncludeDone)pool=pool.filter(n=>!n.done);
+if(S.searchFilter!=='all')pool=pool.filter(n=>n.type===S.searchFilter);
 const m=pool.filter(n=>n.title.toLowerCase().includes(q)||n.body.toLowerCase().includes(q));
 if(!m.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No results</div>';return;}
 const re=new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`,'gi');
