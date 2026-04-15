@@ -155,7 +155,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 
 /* ===== TASKS SECTION (inline compact) ===== */
 .tasks-section{padding:0 20px 12px}
-.task-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s;max-width:calc(50% - 5px)}
+.task-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s;max-width:calc(50% - 5px)}
 .task-row:hover{border-color:var(--border2);background:var(--bg-card-hover)}
 .task-row.done{opacity:.5}
 .task-chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
@@ -163,7 +163,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 .task-chk svg{width:11px;height:11px;stroke:#fff;stroke-width:3;fill:none;opacity:0}
 .task-chk.ok svg{opacity:1}
 .task-info{flex:1;min-width:0}
-.task-text{font-size:13px;font-weight:500;color:var(--text);letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-text{font-size:13px;font-weight:500;color:var(--text);letter-spacing:-.1px;line-height:1.4}
 .task-text.ok{text-decoration:line-through;color:var(--text-muted)}
 .task-rem{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:2px}
 .task-rem svg{width:10px;height:10px}
