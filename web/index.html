@@ -227,7 +227,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 
 /* ===== TASKS SECTION (inline compact) ===== */
 .tasks-section{padding:0 20px 12px}
-.task-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s;max-width:calc(50% - 5px)}
+.task-row{display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s;max-width:calc(50% - 5px)}
 .task-row:hover{border-color:var(--border2);background:var(--bg-card-hover)}
 .task-row.done{opacity:.5}
 .task-chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
@@ -235,7 +235,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 .task-chk svg{width:11px;height:11px;stroke:#fff;stroke-width:3;fill:none;opacity:0}
 .task-chk.ok svg{opacity:1}
 .task-info{flex:1;min-width:0}
-.task-text{font-size:13px;font-weight:500;color:var(--text);letter-spacing:-.1px;line-height:1.4}
+.task-text{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.2px;line-height:1.4}
+.task-bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .task-text.ok{text-decoration:line-through;color:var(--text-muted)}
 .task-rem{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:2px}
 .task-rem svg{width:10px;height:10px}
@@ -1541,7 +1542,7 @@ function renderStream(){
   if(S.taskInputOpen)setTimeout(()=>document.getElementById('taskInput')?.focus(),50);
 }
 
-// Build a compact task row
+// Build task card (vertical mini-tile)
 function buildTaskRow(n,isDone){
   const d=isDone||n.done;
   const folderHue=getFolderHue(n.folder);
@@ -1549,8 +1550,16 @@ function buildTaskRow(n,isDone){
   let style='';
   if(inFolder){style='background:var(--bg);border-color:var(--border)';}
   else if(folderHue){style=`background:${hueToRGBA(folderHue,0.06)};border-color:${hueToRGBA(folderHue,0.1)}`;}
-  const folderPill=folderHue?`<span class="tile-pill tp-folder" style="background:${hueToRGBA(folderHue,0.15)};color:${folderHue};margin-left:auto;font-size:9px">${n.folder}</span>`:`<span class="tile-pill tp-folder" style="margin-left:auto;font-size:9px">${n.folder}</span>`;
-  return `<div class="task-row ${d?'done':''}" style="${style}" onclick="openNote('${n.id}')"><div class="task-chk ${d?'ok':''}" onclick="event.stopPropagation();toggleTask('${n.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text ${d?'ok':''}">${!d?priHtml(n.pri):''} ${n.title}</div>${n.reminder&&!d?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${n.reminder}</div>`:''}</div>${!d?folderPill:''}</div>`;
+  const folderPill=folderHue?`<span class="tile-pill tp-folder" style="background:${hueToRGBA(folderHue,0.15)};color:${folderHue};font-size:9px">${n.folder}</span>`:`<span class="tile-pill tp-folder" style="font-size:9px">${n.folder}</span>`;
+  const priBadge=!d?priHtml(n.pri):'';
+  const remBadge=n.reminder&&!d?`<span class="task-rem"><svg><use href="#i-bell"/></svg>${n.reminder}</span>`:'';
+  return `<div class="task-row ${d?'done':''}" style="${style}" onclick="openNote('${n.id}')">
+    <div class="task-info"><div class="task-text ${d?'ok':''}">${n.title}</div></div>
+    <div class="task-bottom">
+      <div class="task-chk ${d?'ok':''}" onclick="event.stopPropagation();toggleTask('${n.id}')"><svg><use href="#i-check"/></svg></div>
+      ${priBadge}${remBadge}${!d?folderPill:''}
+    </div>
+  </div>`;
 }
 
 function showTaskInput(){S.taskInputOpen=true;closeFab();renderStream();}
