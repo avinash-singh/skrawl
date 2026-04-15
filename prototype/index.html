@@ -228,9 +228,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 
 /* ===== NOTE GRID ===== */
 .grid-section{padding:0 20px 140px}
-.note-grid{column-count:2;column-gap:10px}
+.note-grid{column-count:1;column-gap:10px;max-width:340px}
 
-.tile{break-inside:avoid;margin-bottom:10px;border-radius:var(--r-lg);padding:16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;border:1px solid var(--border);background:var(--bg-card)}
+.tile{break-inside:avoid;margin-bottom:10px;border-radius:var(--r-lg);padding:18px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;border:1px solid var(--border);background:var(--bg-card);min-height:120px}
 .tile:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:var(--shadow)}
 .tile:active{transform:scale(.97)}
 
@@ -1339,7 +1339,7 @@ function bTile(n,i){
 
   if(n.type==='list'){
     const done=n.items.filter(x=>x.d).length,tot=n.items.length,pct=tot?Math.round(done/tot*100):0;
-    const shown=n.items.slice(0,3),rem=n.items.length-3;
+    const shown=n.items.slice(0,5),rem=n.items.length-5;
     const barColor=folderHue||'var(--accent)';
     return `<div class="tile ${isSelected?'selected':''}" style="${tileStyle}" onclick="${clickAction}" ${longPress}>
       ${selCircle}${pin}${badge}<div class="tile-title">${n.title||'Untitled'}</div>
@@ -1347,10 +1347,15 @@ function bTile(n,i){
       <div class="tile-checks">${shown.map(x=>`<div class="tile-chk"><div class="tile-chk-box ${x.d?'ok':''}">${x.d?'<svg><use href="#i-check"/></svg>':''}</div><span class="tile-chk-txt ${x.d?'ok':''}">${x.t}</span></div>`).join('')}${rem>0?`<div class="tile-more">+${rem} more</div>`:''}</div>
       <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
   }
-  const lines=n.body.split('\n').slice(0,i%3===0?5:3).join('<br>');
+  // Show more content, scale font by length
+  const bodyLen=n.body.length;
+  const maxLines=bodyLen<60?3:bodyLen<150?5:8;
+  const lines=n.body.split('\n').slice(0,maxLines).join('<br>');
+  const fontSize=bodyLen<40?'15px':bodyLen<100?'13px':'12px';
+  const titleSize=bodyLen<40?'16px':'14px';
   return `<div class="tile ${isSelected?'selected':''}" style="${tileStyle}" onclick="${clickAction}" ${longPress}>
-    ${selCircle}${pin}${badge}<div class="tile-title">${n.title||'Untitled'}</div>
-    <div class="tile-body">${lines||'<span style="color:var(--text-muted)">Empty</span>'}</div>
+    ${selCircle}${pin}${badge}<div class="tile-title" style="font-size:${titleSize}">${n.title||'Untitled'}</div>
+    <div class="tile-body" style="font-size:${fontSize};line-height:1.6">${lines||'<span style="color:var(--text-muted)">Empty</span>'}</div>
     <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${n.tags.map(t=>`<span class="tile-pill tp-tag">${t}</span>`).join('')}${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
 }
 
