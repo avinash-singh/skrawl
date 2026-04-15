@@ -155,7 +155,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 
 /* ===== TASKS SECTION (inline compact) ===== */
 .tasks-section{padding:0 20px 12px}
-.task-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;cursor:pointer;transition:all .15s}
+.task-row{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s}
 .task-row:hover{border-color:var(--border2);background:var(--bg-card-hover)}
 .task-row.done{opacity:.5}
 .task-chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
@@ -774,26 +774,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
     <div class="ai-banner-icon"><svg><use href="#i-sparkles"/></svg></div>
   </div>
 
-  <!-- Sort bar -->
-  <div class="sort-bar" id="homeSort">
+  <!-- Sort bar + add -->
+  <div class="sort-bar" id="homeSort" style="align-items:center">
     <button class="sort-btn on" onclick="setSort('priority',this)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h12M3 18h6"/></svg>Priority</button>
     <button class="sort-btn" onclick="setSort('date',this)"><svg><use href="#i-clock"/></svg>Recent</button>
+    <div style="flex:1"></div>
+    <button class="sec-add" onclick="openNew('auto')"><svg><use href="#i-plus"/></svg></button>
   </div>
 
-  <!-- Tasks (compact inline) -->
-  <div class="tasks-section">
-    <div class="sec-head"><span class="sec-title">Tasks</span><div style="display:flex;align-items:center;gap:8px"><span class="sec-link" id="taskCount"></span><button class="sec-add" onclick="showTaskInput()"><svg><use href="#i-plus"/></svg></button></div></div>
-    <div id="taskList"></div>
-  </div>
-
-  <!-- Notes & Lists Grid -->
-  <div class="grid-section" style="padding-bottom:16px">
+  <!-- Unified stream -->
+  <div class="grid-section" style="padding-bottom:140px">
     <div id="folderViewHeader"></div>
-    <div class="sec-head"><span class="sec-title" id="gridLabel">Notes & Lists</span><button class="sec-add" onclick="openNew('note')"><svg><use href="#i-plus"/></svg></button></div>
-    <div class="note-grid" id="noteGrid"></div>
+    <div id="unifiedStream"></div>
   </div>
-
-  <div style="padding-bottom:120px"></div>
 </div>
 
 <!-- ===== EDITOR ===== -->
@@ -970,6 +963,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
     <div class="bhead-acts"></div>
   </div>
   <div class="set-group"><div class="set-lbl">Appearance</div><div class="set-card"><div class="set-row"><div class="set-row-l"><div class="set-row-ico" style="background:var(--gradient1)"><svg><use href="#i-moon"/></svg></div><span class="set-row-txt">Dark Mode</span></div><button class="toggle on" id="themeT" onclick="toggleTheme()"><div class="toggle-k"></div></button></div></div></div>
+
+  <div class="set-group"><div class="set-lbl">Default Mode</div><div class="set-card">
+    <div class="set-row"><div class="set-row-l"><div class="set-row-ico" style="background:var(--gradient4)"><svg><use href="#i-file"/></svg></div><span class="set-row-txt">New item starts as</span></div><select class="set-sel" id="defaultModeSel" onchange="S.defaultMode=this.value;toast('Default: '+this.value)"><option value="task">Task (title only)</option><option value="note">Note (with body)</option><option value="list">List (checklist)</option></select></div>
+    <div class="set-row" style="padding-top:8px;padding-bottom:8px"><div style="font-size:12px;color:var(--text-muted);line-height:1.4">You can always add details or checklist items to any item. This just sets what the + button creates by default.</div></div>
+  </div></div>
 
   <div class="set-group"><div class="set-lbl">Personality</div><div class="set-card">
     <div class="set-row" style="flex-direction:column;align-items:stretch;gap:10px">
@@ -1356,7 +1354,10 @@ function bTile(n,i){
     <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${n.tags.map(t=>`<span class="tile-pill tp-tag">${t}</span>`).join('')}${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
 }
 
-function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderTasks();renderNotes();renderGoals();}
+function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderStream();renderGoals();}
+
+// DEFAULT MODE
+S.defaultMode='task'; // 'task','note','list'
 
 // SORT
 S.sortBy='priority';S.calSortBy='priority';
@@ -1378,54 +1379,107 @@ function parseTime(t){if(!t)return 999;const m=t.match(/(\d+)/);if(!m)return 999
 function priHtml(p){if(p===null||p===undefined)return '';return `<span class="pri pri-${p}">P${p}</span>`;}
 
 
-// TASKS (compact inline rows)
-S.taskInputOpen=false;S.showDoneTasks=false;S.showDoneNotes=false;
-function renderTasks(){
-  const tasks=S.notes.filter(n=>n.type==='task'&&n.ctx===S.ctx);
-  const pending=sortItems(tasks.filter(t=>!t.done));
-  const done=tasks.filter(t=>t.done);
-  document.getElementById('taskCount').textContent=`${pending.length} pending`;
+// UNIFIED STREAM
+S.taskInputOpen=false;S.showDone=false;
+
+function isTask(n){return n.type==='task'||((!n.body||!n.body.trim())&&(!n.items||!n.items.length));}
+
+function renderStream(){
+  let all=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&!n.done));
+  let done=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.done));
+  const inFolder=S.currentFolder!=='All Notes';
+  if(inFolder){all=all.filter(n=>n.folder===S.currentFolder);done=done.filter(n=>n.folder===S.currentFolder);}
+
+  const el=document.getElementById('unifiedStream');
+  const fvh=document.getElementById('folderViewHeader');
+
+  // Folder view header
+  if(inFolder){
+    const hue=getFolderHue(S.currentFolder);
+    const bg=hue?hueToRGBA(hue,0.08):'var(--bg-card)';
+    const bc=hue?hueToRGBA(hue,0.15):'var(--border)';
+    fvh.innerHTML=`<div class="folder-view-header" style="background:${bg};border-color:${bc}">
+      <div class="folder-view-icon" style="background:${hue||'var(--accent)'}"><svg><use href="#i-folder"/></svg></div>
+      <div class="folder-view-info"><div class="folder-view-name">${S.currentFolder}</div><div class="folder-view-count">${all.length} items</div></div>
+      <button class="folder-view-close" onclick="S.currentFolder='All Notes';renderStream()"><svg class="i-s"><use href="#i-plus" style="transform:rotate(45deg)"/></svg></button>
+    </div>`;
+  }else{fvh.innerHTML='';}
+
+  if(!all.length&&!done.length&&!S.taskInputOpen){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No items yet. Tap + to start.</div>';return;}
+
+  const pinned=all.filter(n=>n.pin);
+  const rest=all.filter(n=>!n.pin);
   let h='';
+
+  // Quick input
   if(S.taskInputOpen){
     h+=`<div class="task-input-row">
-      <div class="task-chk" style="border-color:var(--accent);opacity:.4"><svg><use href="#i-check"/></svg></div>
-      <input class="task-input" id="taskInput" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')submitTask()"/>
-      <button class="task-input-send" onclick="submitTask()"><svg><use href="#i-check"/></svg></button>
+      <input class="task-input" id="taskInput" placeholder="Type a title..." onkeydown="if(event.key==='Enter')submitNew()"/>
+      <button class="task-input-send" onclick="submitNew()"><svg><use href="#i-check"/></svg></button>
     </div>`;
   }
-  pending.forEach(t=>{
-    h+=`<div class="task-row" onclick="openNote('${t.id}')"><div class="task-chk" onclick="event.stopPropagation();toggleTask('${t.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text">${priHtml(t.pri)} ${t.title}</div>${t.reminder?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${t.reminder}</div>`:''}</div></div>`;
-  });
+
+  // Pinned
+  if(pinned.length){
+    h+=`<div class="pin-label sub-label"><svg class="i-s" style="color:var(--accent)"><use href="#i-pin"/></svg>Pinned</div>`;
+    h+=`<div class="note-grid">`+pinned.map((n,i)=>isTask(n)?buildTaskRow(n):bTile(n,i)).join('')+`</div>`;
+  }
+
+  // Rest — unified: tasks as rows, notes/lists as tiles in a grid
+  if(rest.length){
+    if(pinned.length)h+=`<div class="sub-label" style="margin:12px 0 10px">Others</div>`;
+    // Separate tasks (compact) from rich items (tiles)
+    const tasks=rest.filter(n=>isTask(n));
+    const rich=rest.filter(n=>!isTask(n));
+    // Tasks first (compact rows)
+    if(tasks.length)h+=tasks.map(n=>buildTaskRow(n)).join('');
+    // Then notes/lists as tiles
+    if(rich.length)h+=`<div class="note-grid">`+rich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
+  }
+
+  // Completed
   if(done.length){
-    h+=`<button class="show-done-cta ${S.showDoneTasks?'open':''}" onclick="S.showDoneTasks=!S.showDoneTasks;renderTasks()"><svg class="i-s"><use href="#i-right"/></svg>${done.length} completed</button>`;
-    if(S.showDoneTasks){
-      done.forEach(t=>{
-        h+=`<div class="task-row done"><div class="task-chk ok" onclick="event.stopPropagation();toggleTask('${t.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text ok">${t.title}</div></div></div>`;
-      });
+    h+=`<div style="margin:14px 0 6px"><button class="show-done-cta ${S.showDone?'open':''}" onclick="S.showDone=!S.showDone;renderStream()"><svg class="i-s"><use href="#i-right"/></svg>${done.length} completed</button></div>`;
+    if(S.showDone){
+      const doneTasks=done.filter(n=>isTask(n));
+      const doneRich=done.filter(n=>!isTask(n));
+      if(doneTasks.length)h+=doneTasks.map(n=>buildTaskRow(n,true)).join('');
+      if(doneRich.length)h+=`<div class="note-grid">`+doneRich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
     }
   }
-  document.getElementById('taskList').innerHTML=h;
+
+  el.innerHTML=h;
   if(S.taskInputOpen)setTimeout(()=>document.getElementById('taskInput')?.focus(),50);
 }
-function showTaskInput(){
-  S.taskInputOpen=true;
-  closeFab();
-  renderTasks();
+
+// Build a compact task row (styled like a mini tile)
+function buildTaskRow(n,isDone){
+  const d=isDone||n.done;
+  const folderHue=getFolderHue(n.folder);
+  const inFolder=S.currentFolder!=='All Notes';
+  let style='';
+  if(inFolder){style='background:var(--bg);border-color:var(--border)';}
+  else if(folderHue){style=`background:${hueToRGBA(folderHue,0.06)};border-color:${hueToRGBA(folderHue,0.1)}`;}
+  const folderPill=folderHue?`<span class="tile-pill tp-folder" style="background:${hueToRGBA(folderHue,0.15)};color:${folderHue};margin-left:auto;font-size:9px">${n.folder}</span>`:`<span class="tile-pill tp-folder" style="margin-left:auto;font-size:9px">${n.folder}</span>`;
+  return `<div class="task-row ${d?'done':''}" style="${style}" onclick="openNote('${n.id}')"><div class="task-chk ${d?'ok':''}" onclick="event.stopPropagation();toggleTask('${n.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text ${d?'ok':''}">${!d?priHtml(n.pri):''} ${n.title}</div>${n.reminder&&!d?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${n.reminder}</div>`:''}</div>${!d?folderPill:''}</div>`;
 }
-function submitTask(){
+
+function showTaskInput(){S.taskInputOpen=true;closeFab();renderStream();}
+function submitNew(){
   const inp=document.getElementById('taskInput');
   const title=inp?.value?.trim();
-  if(!title){S.taskInputOpen=false;renderTasks();return;}
-  const id='t'+Date.now();
-  S.notes.push({id,type:'task',title,body:'',ctx:S.ctx,folder:'Inbox',color:'default',pin:false,reminder:null,pri:null,items:[],tags:[],time:'now',done:false});
+  if(!title){S.taskInputOpen=false;renderStream();return;}
+  const id='n'+Date.now();
+  const folder=(S.currentFolder!=='All Notes')?S.currentFolder:'Inbox';
+  // Type is determined by default mode — but all start as title-only
+  S.notes.unshift({id,type:S.defaultMode,title,body:'',ctx:S.ctx,folder,color:'default',pin:false,reminder:null,pri:null,items:[],tags:[],time:'now',done:false});
   inp.value='';
-  // Keep input open for rapid entry
-  renderTasks();
-  toast('Task added');
+  renderStream();
+  toast('Added');
 }
 function toggleTask(id){
   const t=S.notes.find(x=>x.id===id);
-  if(t){t.done=!t.done;renderTasks();if(t.done)celebrate();else toast('Task reopened');}
+  if(t){t.done=!t.done;renderStream();if(t.done)celebrate();else toast('Reopened');}
 }
 function addQuickTask(){
   closeFab();
@@ -1801,43 +1855,8 @@ function renderGoalsFull(){
   }).join('')+'</div>';
 }
 
-// NOTES & LISTS (not tasks, hide done by default)
-function renderNotes(){
-  let notes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&!n.done));
-  let doneNotes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&n.done));
-  const inFolder=S.currentFolder!=='All Notes';
-  if(inFolder){notes=notes.filter(n=>n.folder===S.currentFolder);doneNotes=doneNotes.filter(n=>n.folder===S.currentFolder);}
-  const grid=document.getElementById('noteGrid');
-  const fvh=document.getElementById('folderViewHeader');
-
-  // Folder view header
-  if(inFolder){
-    const hue=getFolderHue(S.currentFolder);
-    const bg=hue?hueToRGBA(hue,0.08):'var(--bg-card)';
-    const bc=hue?hueToRGBA(hue,0.15):'var(--border)';
-    fvh.innerHTML=`<div class="folder-view-header" style="background:${bg};border-color:${bc}">
-      <div class="folder-view-icon" style="background:${hue||'var(--accent)'}"><svg><use href="#i-folder"/></svg></div>
-      <div class="folder-view-info"><div class="folder-view-name">${S.currentFolder}</div><div class="folder-view-count">${notes.length} items</div></div>
-      <button class="folder-view-close" onclick="S.currentFolder='All Notes';renderNotes()"><svg class="i-s"><use href="#i-plus" style="transform:rotate(45deg)"/></svg></button>
-    </div>`;
-    document.getElementById('gridLabel').textContent='';
-  }else{
-    fvh.innerHTML='';
-    document.getElementById('gridLabel').textContent=`${notes.length} Notes & Lists`;
-  }
-
-  if(!notes.length&&!doneNotes.length){grid.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No notes yet. Tap + to start.</div>';return;}
-  const pinned=notes.filter(n=>n.pin),rest=notes.filter(n=>!n.pin);
-  let h='';
-  if(pinned.length){h+=`<div class="pin-label sub-label"><svg class="i-s" style="color:var(--accent)"><use href="#i-pin"/></svg>Pinned</div>`;h+=pinned.map((n,i)=>bTile(n,i)).join('');}
-  if(rest.length){if(pinned.length)h+=`<div class="sub-label" style="column-span:all;margin:8px 0 10px">Others</div>`;h+=rest.map((n,i)=>bTile(n,i+pinned.length)).join('');}
-  // Done notes/lists
-  if(doneNotes.length){
-    h+=`<div style="column-span:all;margin:12px 0 6px"><button class="show-done-cta ${S.showDoneNotes?'open':''}" onclick="S.showDoneNotes=!S.showDoneNotes;renderNotes()"><svg class="i-s"><use href="#i-right"/></svg>${doneNotes.length} completed</button></div>`;
-    if(S.showDoneNotes){h+=doneNotes.map((n,i)=>bTile(n,i)).join('');}
-  }
-  grid.innerHTML=h;
-}
+// Alias for backward compat
+function renderNotes(){renderStream();}
 
 // EDITOR
 function renderEdMeta(n){
@@ -1877,6 +1896,7 @@ function openNote(id){
 
 function openNew(type){
   closeFab();
+  if(type==='auto')type=S.defaultMode;
   const id='n'+Date.now(),isCheck=type==='list';
   const folder=(S.currentFolder!=='All Notes')?S.currentFolder:'Inbox';
   S.notes.unshift({id,type:type,title:'',body:'',ctx:S.ctx,folder,color:'default',pin:false,reminder:null,pri:null,items:isCheck?[{id:'i1',t:'',d:false}]:[],tags:[],time:'now'});

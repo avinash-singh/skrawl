@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Skrawl — Notes & Goals</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+<title>Skrawl</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -68,6 +67,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 
 /* ===== APP SHELL ===== */
 .app{display:flex;height:100vh;overflow:hidden;position:relative;transition:background .4s}
+.app.biz{--accent:#3D8BFF;--accent-glow:rgba(61,139,255,0.2);--gradient1:linear-gradient(135deg,#3D8BFF,#5BA8FF)}
 
 /* Desktop sidebar */
 .desk-sidebar{width:240px;background:var(--bg-card);border-right:1px solid var(--border);display:none;flex-direction:column;flex-shrink:0;overflow-y:auto;scrollbar-width:none}
@@ -82,97 +82,73 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 .ds-item svg{width:18px;height:18px}
 .ds-divider{height:1px;background:var(--border);margin:8px 14px}
 .ds-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;padding:12px 14px 6px}
-.ds-ctx{padding:12px 14px}
-.ds-ctx .ctx-icons{width:100%;height:42px}
-.ds-ctx .ctx-icon-btn{flex:1;font-size:12px;font-weight:600}
-.ds-ctx .ctx-pill{width:calc(50% - 3px)}
-.ds-ctx .ctx-pill.business{left:calc(50%)}
 
-/* Main content area */
+/* Main content */
 .main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
-
-/* Phone frame hidden on web */
 .phone{display:contents}
 .sbar{display:none}
-@media(max-width:767px){
-  .sbar{display:flex;height:54px;align-items:flex-end;justify-content:space-between;padding:0 20px 8px;font-size:15px;font-weight:600;color:var(--text);z-index:100;position:relative;background:var(--bg)}
-}
+@media(max-width:767px){.sbar{display:flex;height:54px;align-items:flex-end;justify-content:space-between;padding:0 20px 8px;font-size:15px;font-weight:600;color:var(--text);z-index:100;position:relative;background:var(--bg)}}
 .sbar-r{display:flex;gap:5px;align-items:center}
 .sbar-r svg{width:16px;height:16px}
 
-/* ===== SCREENS ===== */
+/* Screens */
 .scr{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--border) transparent;transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .2s}
 @media(max-width:767px){.scr{top:54px}}
 .scr.hide{transform:translateX(100%);opacity:0;pointer-events:none}
 @media(min-width:768px){.scr.hide{transform:translateX(20px)}}
 
-/* Responsive note grid */
+/* Responsive grid */
 @media(min-width:768px){
   .note-grid{column-count:3!important;column-gap:12px!important}
-  .home-head{padding:20px 28px 0!important}
-  .sort-bar,.tasks-section,.grid-section{padding-left:28px!important;padding-right:28px!important}
-  .ai-banner{margin-left:28px!important;margin-right:28px!important}
-  .goals-full{padding-left:28px!important;padding-right:28px!important}
-  .goal-summary{margin-left:28px!important;margin-right:28px!important}
-  .goal-ai-card{margin-left:28px!important;margin-right:28px!important}
-  .goal-types{padding-left:28px!important;padding-right:28px!important}
-  .period-tabs{margin-left:28px!important;margin-right:28px!important}
-  .cal-month{padding-left:28px!important;padding-right:28px!important}
+  .home-head,.sort-bar,.grid-section,.goals-full,.goal-summary,.goal-ai-card,.goal-types,.period-tabs,.cal-month,.cal-events,.set-group,.notif-wrap{padding-left:28px!important;padding-right:28px!important;margin-left:0!important;margin-right:0!important}
   .cal-grid{padding-left:24px!important;padding-right:24px!important}
-  .cal-events{padding-left:28px!important;padding-right:28px!important}
-  .set-group{padding-left:28px!important;padding-right:28px!important}
-  .notif-wrap{padding-left:28px!important;padding-right:28px!important}
-  .ed-title{padding-left:32px!important;padding-right:32px!important}
-  .ed-meta{padding-left:32px!important;padding-right:32px!important}
-  .ed-body{padding-left:32px!important;padding-right:32px!important}
-  .ed-checks{padding-left:32px!important;padding-right:32px!important}
+  .ed-title,.ed-meta,.ed-body,.ed-checks{padding-left:32px!important;padding-right:32px!important}
+  .ai-banner{margin-left:28px!important;margin-right:28px!important;padding:18px 24px!important}
+  .ai-banner-text{font-size:15px!important}
 }
-@media(min-width:1100px){
-  .note-grid{column-count:4!important}
-}
+@media(min-width:1100px){.note-grid{column-count:4!important}}
 
-/* Hide mobile-only elements on desktop */
+/* Desktop: hide mobile elements, style toggle */
 @media(min-width:768px){
   .tbar{display:none!important}
   .mic-fab{bottom:24px!important;right:28px!important}
   .scr{bottom:0!important}
-  /* Hide hamburger and logo only — keep toggle + settings */
   .home-head .home-top .ibtn[onclick*="openSidebar"]{display:none!important}
   .home-head .home-top .logo{display:none!important}
-  /* Push toggle + settings to the right */
   .home-head .home-top{justify-content:flex-end!important}
-  /* Wider toggle with text labels + visible background */
   .home-head .home-actions .ctx-icons{width:220px!important;height:42px!important;background:var(--bg-card)!important;border:1px solid var(--border2)!important;border-radius:var(--r-full)!important;padding:3px!important}
   .home-head .home-actions .ctx-icon-btn{flex:1!important;width:auto!important;gap:6px}
   .home-head .home-actions .ctx-icon-btn::after{content:attr(data-label);font-size:12px;font-weight:600}
   .home-head .home-actions .ctx-pill{width:calc(50% - 3px)!important}
   .home-head .home-actions .ctx-pill.business{left:calc(50%)!important}
-  /* Greeting + quote spacious on desktop */
   .home-greet{font-size:20px!important;font-weight:700!important;color:var(--text)!important;margin-bottom:4px!important}
   #aiBannerQuote{font-size:14px!important;margin-bottom:20px!important}
-  /* Bigger AI insight */
-  .ai-banner{padding:18px 24px!important}
-  .ai-banner-text{font-size:15px!important}
-  /* + buttons with labels */
   .sec-add{width:auto!important;padding:0 16px!important;border-radius:var(--r-full)!important;height:34px!important}
   .sec-add::after{content:attr(data-label);font-size:12px;font-weight:600;color:#fff;margin-left:2px}
-  /* Back headers — no back button, title left-aligned */
   .bhead .bbtn{display:none}
   .bhead-title{text-align:left!important;padding-left:8px!important}
-  /* Context toggles in bhead (goals, calendar) — same wide style */
   .bhead .ctx-icons{width:220px!important;height:42px!important;background:var(--bg-card)!important;border:1px solid var(--border2)!important;border-radius:var(--r-full)!important;padding:3px!important}
   .bhead .ctx-icon-btn{flex:1!important;width:auto!important;gap:6px}
   .bhead .ctx-icon-btn::after{content:attr(data-label);font-size:12px;font-weight:600}
   .bhead .ctx-pill{width:calc(50% - 3px)!important}
   .bhead .ctx-pill.business{left:calc(50%)!important}
-  /* Search — add top padding so it doesn't overlap */
   #s-search .bhead{padding-top:16px!important;padding-bottom:14px!important}
 }
 
-/* Layout toggle */
+/* Layout toggle link */
 .lt-btn{position:fixed;bottom:14px;left:14px;z-index:9999;padding:7px 14px;border-radius:var(--r-full);border:1px solid var(--border2);background:var(--bg-elevated);color:var(--text-dim);font:600 12px/1 'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;box-shadow:var(--shadow);text-decoration:none}
 .lt-btn:hover{background:var(--bg-card-hover);color:var(--text)}
 .lt-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* Status bar */
+.sbar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 32px 8px;font-size:15px;font-weight:600;color:var(--text);z-index:100;position:relative}
+.sbar-r{display:flex;gap:5px;align-items:center}
+.sbar-r svg{width:16px;height:16px}
+
+/* ===== SCREENS ===== */
+.scr{position:absolute;top:54px;left:0;right:0;bottom:0;background:var(--bg);overflow-y:auto;overflow-x:hidden;scrollbar-width:none;transition:transform .4s cubic-bezier(.32,.72,0,1),opacity .3s}
+.scr::-webkit-scrollbar{display:none}
+.scr.hide{transform:translateX(100%);opacity:0;pointer-events:none}
 
 /* ===== ICONS ===== */
 .i{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0}
@@ -217,7 +193,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 .ctx-pill.business{left:44px;background:linear-gradient(135deg,#3D8BFF,#5BA8FF)}
 
 /* Business mode accent override */
-.phone.biz,.app.biz{--accent:#3D8BFF;--accent-glow:rgba(61,139,255,0.2);--gradient1:linear-gradient(135deg,#3D8BFF,#5BA8FF)}
+.phone.biz{--accent:#3D8BFF;--accent-glow:rgba(61,139,255,0.2);--gradient1:linear-gradient(135deg,#3D8BFF,#5BA8FF)}
 
 /* Goals Section */
 .goals-section{padding:0 20px 16px}
@@ -251,7 +227,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 
 /* ===== TASKS SECTION (inline compact) ===== */
 .tasks-section{padding:0 20px 12px}
-.task-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;cursor:pointer;transition:all .15s}
+.task-row{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s}
 .task-row:hover{border-color:var(--border2);background:var(--bg-card-hover)}
 .task-row.done{opacity:.5}
 .task-chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
@@ -840,8 +816,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
 </svg>
 
 <div class="app">
-
-<!-- Desktop Sidebar -->
 <div class="desk-sidebar" id="deskSidebar">
   <div class="ds-logo">Skrawl<span>.</span></div>
   <div class="ds-nav">
@@ -854,13 +828,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
     <div id="dsSidebarFolders"></div>
     <div class="ds-divider"></div>
     <button class="ds-item" data-ds="settings" onclick="nav('settings')"><svg class="i"><use href="#i-settings"/></svg>Settings</button>
-    <button class="ds-item" data-ds="notifs" onclick="nav('notifs')"><svg class="i"><use href="#i-bell"/></svg>Notifications</button>
   </div>
 </div>
-
-<!-- Main Content -->
 <div class="main-area">
-
 <div class="phone">
 <div class="sbar"><span>9:41</span><div class="sbar-r"><svg viewBox="0 0 24 24" fill="var(--text)" stroke="none"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8" stroke="var(--text)" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg><svg viewBox="0 0 28 14" fill="var(--text)"><rect x="0" y="0" width="23" height="12" rx="3" fill="none" stroke="var(--text)" stroke-width="1.5"/><rect x="2" y="2" width="16" height="8" rx="1.5"/><rect x="24.5" y="3.5" width="2.5" height="5" rx="1"/></svg></div></div>
 <div class="toast" id="toast"></div>
@@ -892,26 +862,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
     <div class="ai-banner-icon"><svg><use href="#i-sparkles"/></svg></div>
   </div>
 
-  <!-- Sort bar -->
-  <div class="sort-bar" id="homeSort">
+  <!-- Sort bar + add -->
+  <div class="sort-bar" id="homeSort" style="align-items:center">
     <button class="sort-btn on" onclick="setSort('priority',this)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h12M3 18h6"/></svg>Priority</button>
     <button class="sort-btn" onclick="setSort('date',this)"><svg><use href="#i-clock"/></svg>Recent</button>
+    <div style="flex:1"></div>
+    <button class="sec-add" data-label=" New" onclick="openNew('auto')"><svg><use href="#i-plus"/></svg></button>
   </div>
 
-  <!-- Tasks (compact inline) -->
-  <div class="tasks-section">
-    <div class="sec-head"><span class="sec-title">Tasks</span><div style="display:flex;align-items:center;gap:8px"><span class="sec-link" id="taskCount"></span><button class="sec-add" data-label=" New Task" onclick="showTaskInput()"><svg><use href="#i-plus"/></svg></button></div></div>
-    <div id="taskList"></div>
-  </div>
-
-  <!-- Notes & Lists Grid -->
-  <div class="grid-section" style="padding-bottom:16px">
+  <!-- Unified stream -->
+  <div class="grid-section" style="padding-bottom:140px">
     <div id="folderViewHeader"></div>
-    <div class="sec-head"><span class="sec-title" id="gridLabel">Notes & Lists</span><button class="sec-add" data-label=" New Note" onclick="openNew('note')"><svg><use href="#i-plus"/></svg></button></div>
-    <div class="note-grid" id="noteGrid"></div>
+    <div id="unifiedStream"></div>
   </div>
-
-  <div style="padding-bottom:120px"></div>
 </div>
 
 <!-- ===== EDITOR ===== -->
@@ -989,7 +952,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   <div class="bhead">
     <span class="bhead-title" style="text-align:left;padding-left:8px">Goals</span>
     <div class="bhead-acts">
-      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillG"></div><button class="ctx-icon-btn on" id="cPersonalG" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessG" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button></div>
+      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillG"></div><button class="ctx-icon-btn on" id="cPersonalG" onclick="setCtx('personal')"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessG" onclick="setCtx('business')"><svg><use href="#i-briefcase"/></svg></button></div>
       <button class="ibtn" onclick="toast('New goal created')"><svg class="i"><use href="#i-plus"/></svg></button>
     </div>
   </div>
@@ -1037,7 +1000,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   <div class="bhead">
     <span class="bhead-title" style="text-align:left;padding-left:8px">Calendar</span>
     <div class="bhead-acts">
-      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillC"></div><button class="ctx-icon-btn on" id="cPersonalC" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessC" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button></div>
+      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillC"></div><button class="ctx-icon-btn on" id="cPersonalC" onclick="setCtx('personal')"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessC" onclick="setCtx('business')"><svg><use href="#i-briefcase"/></svg></button></div>
     </div>
   </div>
   <div class="cal-month"><button class="ibtn" style="width:32px;height:32px" onclick="toast('Previous month')"><svg class="i-s"><use href="#i-left"/></svg></button><span class="cal-month-lbl">April 2026</span><button class="ibtn" style="width:32px;height:32px" onclick="toast('Next month')"><svg class="i-s"><use href="#i-right"/></svg></button></div>
@@ -1061,9 +1024,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
   <div class="bhead">
     <button class="bbtn" onclick="nav('home')"><svg class="i"><use href="#i-left"/></svg>Back</button>
     <span class="bhead-title">Search</span>
-    <div class="bhead-acts">
-      <div class="ctx-icons" style="margin-right:4px"><div class="ctx-pill personal" id="ctxPillS"></div><button class="ctx-icon-btn on" id="cPersonalS" onclick="setCtx('personal')" data-label="Personal"><svg><use href="#i-user"/></svg></button><button class="ctx-icon-btn" id="cBusinessS" onclick="setCtx('business')" data-label="Business"><svg><use href="#i-briefcase"/></svg></button></div>
-    </div>
+    <div class="bhead-acts"></div>
   </div>
   <div style="padding:4px 20px 10px;position:relative">
     <svg class="i-s" style="position:absolute;left:34px;top:50%;transform:translateY(-50%);color:var(--text-muted)"><use href="#i-search"/></svg>
@@ -1090,6 +1051,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);margin:0;min-
     <div class="bhead-acts"></div>
   </div>
   <div class="set-group"><div class="set-lbl">Appearance</div><div class="set-card"><div class="set-row"><div class="set-row-l"><div class="set-row-ico" style="background:var(--gradient1)"><svg><use href="#i-moon"/></svg></div><span class="set-row-txt">Dark Mode</span></div><button class="toggle on" id="themeT" onclick="toggleTheme()"><div class="toggle-k"></div></button></div></div></div>
+
+  <div class="set-group"><div class="set-lbl">Default Mode</div><div class="set-card">
+    <div class="set-row"><div class="set-row-l"><div class="set-row-ico" style="background:var(--gradient4)"><svg><use href="#i-file"/></svg></div><span class="set-row-txt">New item starts as</span></div><select class="set-sel" id="defaultModeSel" onchange="S.defaultMode=this.value;toast('Default: '+this.value)"><option value="task">Task (title only)</option><option value="note">Note (with body)</option><option value="list">List (checklist)</option></select></div>
+    <div class="set-row" style="padding-top:8px;padding-bottom:8px"><div style="font-size:12px;color:var(--text-muted);line-height:1.4">You can always add details or checklist items to any item. This just sets what the + button creates by default.</div></div>
+  </div></div>
 
   <div class="set-group"><div class="set-lbl">Personality</div><div class="set-card">
     <div class="set-row" style="flex-direction:column;align-items:stretch;gap:10px">
@@ -1316,7 +1282,7 @@ function setCtx(c){
   if(S.ctx===c)return;S.ctx=c;
   S.currentFolder='All Notes';
   // Sync all toggle instances (home + goals page)
-  document.querySelectorAll('.ctx-pill').forEach(p=>{p.className='ctx-pill '+c;p.style.left=c==='personal'?'3px':'';});
+  document.querySelectorAll('.ctx-pill').forEach(p=>{p.className='ctx-pill '+c;p.style.left=c==='personal'?'3px':'44px';});
   document.querySelectorAll('[id^=cPersonal]').forEach(b=>b.classList.toggle('on',c==='personal'));
   document.querySelectorAll('[id^=cBusiness]').forEach(b=>b.classList.toggle('on',c==='business'));
   document.querySelector('.phone')?.classList.toggle('biz',c==='business');
@@ -1477,7 +1443,10 @@ function bTile(n,i){
     <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${n.tags.map(t=>`<span class="tile-pill tp-tag">${t}</span>`).join('')}${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
 }
 
-function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderTasks();renderNotes();renderGoals();}
+function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderStream();renderGoals();}
+
+// DEFAULT MODE
+S.defaultMode='task'; // 'task','note','list'
 
 // SORT
 S.sortBy='priority';S.calSortBy='priority';
@@ -1499,54 +1468,107 @@ function parseTime(t){if(!t)return 999;const m=t.match(/(\d+)/);if(!m)return 999
 function priHtml(p){if(p===null||p===undefined)return '';return `<span class="pri pri-${p}">P${p}</span>`;}
 
 
-// TASKS (compact inline rows)
-S.taskInputOpen=false;S.showDoneTasks=false;S.showDoneNotes=false;
-function renderTasks(){
-  const tasks=S.notes.filter(n=>n.type==='task'&&n.ctx===S.ctx);
-  const pending=sortItems(tasks.filter(t=>!t.done));
-  const done=tasks.filter(t=>t.done);
-  document.getElementById('taskCount').textContent=`${pending.length} pending`;
+// UNIFIED STREAM
+S.taskInputOpen=false;S.showDone=false;
+
+function isTask(n){return n.type==='task'||((!n.body||!n.body.trim())&&(!n.items||!n.items.length));}
+
+function renderStream(){
+  let all=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&!n.done));
+  let done=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.done));
+  const inFolder=S.currentFolder!=='All Notes';
+  if(inFolder){all=all.filter(n=>n.folder===S.currentFolder);done=done.filter(n=>n.folder===S.currentFolder);}
+
+  const el=document.getElementById('unifiedStream');
+  const fvh=document.getElementById('folderViewHeader');
+
+  // Folder view header
+  if(inFolder){
+    const hue=getFolderHue(S.currentFolder);
+    const bg=hue?hueToRGBA(hue,0.08):'var(--bg-card)';
+    const bc=hue?hueToRGBA(hue,0.15):'var(--border)';
+    fvh.innerHTML=`<div class="folder-view-header" style="background:${bg};border-color:${bc}">
+      <div class="folder-view-icon" style="background:${hue||'var(--accent)'}"><svg><use href="#i-folder"/></svg></div>
+      <div class="folder-view-info"><div class="folder-view-name">${S.currentFolder}</div><div class="folder-view-count">${all.length} items</div></div>
+      <button class="folder-view-close" onclick="S.currentFolder='All Notes';renderStream()"><svg class="i-s"><use href="#i-plus" style="transform:rotate(45deg)"/></svg></button>
+    </div>`;
+  }else{fvh.innerHTML='';}
+
+  if(!all.length&&!done.length&&!S.taskInputOpen){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No items yet. Tap + to start.</div>';return;}
+
+  const pinned=all.filter(n=>n.pin);
+  const rest=all.filter(n=>!n.pin);
   let h='';
+
+  // Quick input
   if(S.taskInputOpen){
     h+=`<div class="task-input-row">
-      <div class="task-chk" style="border-color:var(--accent);opacity:.4"><svg><use href="#i-check"/></svg></div>
-      <input class="task-input" id="taskInput" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')submitTask()"/>
-      <button class="task-input-send" onclick="submitTask()"><svg><use href="#i-check"/></svg></button>
+      <input class="task-input" id="taskInput" placeholder="Type a title..." onkeydown="if(event.key==='Enter')submitNew()"/>
+      <button class="task-input-send" onclick="submitNew()"><svg><use href="#i-check"/></svg></button>
     </div>`;
   }
-  pending.forEach(t=>{
-    h+=`<div class="task-row" onclick="openNote('${t.id}')"><div class="task-chk" onclick="event.stopPropagation();toggleTask('${t.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text">${priHtml(t.pri)} ${t.title}</div>${t.reminder?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${t.reminder}</div>`:''}</div></div>`;
-  });
+
+  // Pinned
+  if(pinned.length){
+    h+=`<div class="pin-label sub-label"><svg class="i-s" style="color:var(--accent)"><use href="#i-pin"/></svg>Pinned</div>`;
+    h+=`<div class="note-grid">`+pinned.map((n,i)=>isTask(n)?buildTaskRow(n):bTile(n,i)).join('')+`</div>`;
+  }
+
+  // Rest — unified: tasks as rows, notes/lists as tiles in a grid
+  if(rest.length){
+    if(pinned.length)h+=`<div class="sub-label" style="margin:12px 0 10px">Others</div>`;
+    // Separate tasks (compact) from rich items (tiles)
+    const tasks=rest.filter(n=>isTask(n));
+    const rich=rest.filter(n=>!isTask(n));
+    // Tasks first (compact rows)
+    if(tasks.length)h+=tasks.map(n=>buildTaskRow(n)).join('');
+    // Then notes/lists as tiles
+    if(rich.length)h+=`<div class="note-grid">`+rich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
+  }
+
+  // Completed
   if(done.length){
-    h+=`<button class="show-done-cta ${S.showDoneTasks?'open':''}" onclick="S.showDoneTasks=!S.showDoneTasks;renderTasks()"><svg class="i-s"><use href="#i-right"/></svg>${done.length} completed</button>`;
-    if(S.showDoneTasks){
-      done.forEach(t=>{
-        h+=`<div class="task-row done"><div class="task-chk ok" onclick="event.stopPropagation();toggleTask('${t.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text ok">${t.title}</div></div></div>`;
-      });
+    h+=`<div style="margin:14px 0 6px"><button class="show-done-cta ${S.showDone?'open':''}" onclick="S.showDone=!S.showDone;renderStream()"><svg class="i-s"><use href="#i-right"/></svg>${done.length} completed</button></div>`;
+    if(S.showDone){
+      const doneTasks=done.filter(n=>isTask(n));
+      const doneRich=done.filter(n=>!isTask(n));
+      if(doneTasks.length)h+=doneTasks.map(n=>buildTaskRow(n,true)).join('');
+      if(doneRich.length)h+=`<div class="note-grid">`+doneRich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
     }
   }
-  document.getElementById('taskList').innerHTML=h;
+
+  el.innerHTML=h;
   if(S.taskInputOpen)setTimeout(()=>document.getElementById('taskInput')?.focus(),50);
 }
-function showTaskInput(){
-  S.taskInputOpen=true;
-  closeFab();
-  renderTasks();
+
+// Build a compact task row
+function buildTaskRow(n,isDone){
+  const d=isDone||n.done;
+  const folderHue=getFolderHue(n.folder);
+  const inFolder=S.currentFolder!=='All Notes';
+  let style='';
+  if(inFolder){style='background:var(--bg);border-color:var(--border)';}
+  else if(folderHue){style=`background:${hueToRGBA(folderHue,0.06)};border-color:${hueToRGBA(folderHue,0.1)}`;}
+  const folderPill=folderHue?`<span class="tile-pill tp-folder" style="background:${hueToRGBA(folderHue,0.15)};color:${folderHue};margin-left:auto;font-size:9px">${n.folder}</span>`:`<span class="tile-pill tp-folder" style="margin-left:auto;font-size:9px">${n.folder}</span>`;
+  return `<div class="task-row ${d?'done':''}" style="${style}" onclick="openNote('${n.id}')"><div class="task-chk ${d?'ok':''}" onclick="event.stopPropagation();toggleTask('${n.id}')"><svg><use href="#i-check"/></svg></div><div class="task-info"><div class="task-text ${d?'ok':''}">${!d?priHtml(n.pri):''} ${n.title}</div>${n.reminder&&!d?`<div class="task-rem"><svg><use href="#i-bell"/></svg>${n.reminder}</div>`:''}</div>${!d?folderPill:''}</div>`;
 }
-function submitTask(){
+
+function showTaskInput(){S.taskInputOpen=true;closeFab();renderStream();}
+function submitNew(){
   const inp=document.getElementById('taskInput');
   const title=inp?.value?.trim();
-  if(!title){S.taskInputOpen=false;renderTasks();return;}
-  const id='t'+Date.now();
-  S.notes.push({id,type:'task',title,body:'',ctx:S.ctx,folder:'Inbox',color:'default',pin:false,reminder:null,pri:null,items:[],tags:[],time:'now',done:false});
+  if(!title){S.taskInputOpen=false;renderStream();return;}
+  const id='n'+Date.now();
+  const folder=(S.currentFolder!=='All Notes')?S.currentFolder:'Inbox';
+  // Type is determined by default mode — but all start as title-only
+  S.notes.unshift({id,type:S.defaultMode,title,body:'',ctx:S.ctx,folder,color:'default',pin:false,reminder:null,pri:null,items:[],tags:[],time:'now',done:false});
   inp.value='';
-  // Keep input open for rapid entry
-  renderTasks();
-  toast('Task added');
+  renderStream();
+  toast('Added');
 }
 function toggleTask(id){
   const t=S.notes.find(x=>x.id===id);
-  if(t){t.done=!t.done;renderTasks();if(t.done)celebrate();else toast('Task reopened');}
+  if(t){t.done=!t.done;renderStream();if(t.done)celebrate();else toast('Reopened');}
 }
 function addQuickTask(){
   closeFab();
@@ -1922,43 +1944,8 @@ function renderGoalsFull(){
   }).join('')+'</div>';
 }
 
-// NOTES & LISTS (not tasks, hide done by default)
-function renderNotes(){
-  let notes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&!n.done));
-  let doneNotes=sortItems(S.notes.filter(n=>n.ctx===S.ctx&&n.type!=='task'&&n.done));
-  const inFolder=S.currentFolder!=='All Notes';
-  if(inFolder){notes=notes.filter(n=>n.folder===S.currentFolder);doneNotes=doneNotes.filter(n=>n.folder===S.currentFolder);}
-  const grid=document.getElementById('noteGrid');
-  const fvh=document.getElementById('folderViewHeader');
-
-  // Folder view header
-  if(inFolder){
-    const hue=getFolderHue(S.currentFolder);
-    const bg=hue?hueToRGBA(hue,0.08):'var(--bg-card)';
-    const bc=hue?hueToRGBA(hue,0.15):'var(--border)';
-    fvh.innerHTML=`<div class="folder-view-header" style="background:${bg};border-color:${bc}">
-      <div class="folder-view-icon" style="background:${hue||'var(--accent)'}"><svg><use href="#i-folder"/></svg></div>
-      <div class="folder-view-info"><div class="folder-view-name">${S.currentFolder}</div><div class="folder-view-count">${notes.length} items</div></div>
-      <button class="folder-view-close" onclick="S.currentFolder='All Notes';renderNotes()"><svg class="i-s"><use href="#i-plus" style="transform:rotate(45deg)"/></svg></button>
-    </div>`;
-    document.getElementById('gridLabel').textContent='';
-  }else{
-    fvh.innerHTML='';
-    document.getElementById('gridLabel').textContent=`${notes.length} Notes & Lists`;
-  }
-
-  if(!notes.length&&!doneNotes.length){grid.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No notes yet. Tap + to start.</div>';return;}
-  const pinned=notes.filter(n=>n.pin),rest=notes.filter(n=>!n.pin);
-  let h='';
-  if(pinned.length){h+=`<div class="pin-label sub-label"><svg class="i-s" style="color:var(--accent)"><use href="#i-pin"/></svg>Pinned</div>`;h+=pinned.map((n,i)=>bTile(n,i)).join('');}
-  if(rest.length){if(pinned.length)h+=`<div class="sub-label" style="column-span:all;margin:8px 0 10px">Others</div>`;h+=rest.map((n,i)=>bTile(n,i+pinned.length)).join('');}
-  // Done notes/lists
-  if(doneNotes.length){
-    h+=`<div style="column-span:all;margin:12px 0 6px"><button class="show-done-cta ${S.showDoneNotes?'open':''}" onclick="S.showDoneNotes=!S.showDoneNotes;renderNotes()"><svg class="i-s"><use href="#i-right"/></svg>${doneNotes.length} completed</button></div>`;
-    if(S.showDoneNotes){h+=doneNotes.map((n,i)=>bTile(n,i)).join('');}
-  }
-  grid.innerHTML=h;
-}
+// Alias for backward compat
+function renderNotes(){renderStream();}
 
 // EDITOR
 function renderEdMeta(n){
@@ -1998,6 +1985,7 @@ function openNote(id){
 
 function openNew(type){
   closeFab();
+  if(type==='auto')type=S.defaultMode;
   const id='n'+Date.now(),isCheck=type==='list';
   const folder=(S.currentFolder!=='All Notes')?S.currentFolder:'Inbox';
   S.notes.unshift({id,type:type,title:'',body:'',ctx:S.ctx,folder,color:'default',pin:false,reminder:null,pri:null,items:isCheck?[{id:'i1',t:'',d:false}]:[],tags:[],time:'now'});
@@ -2258,76 +2246,33 @@ function toast(m){const e=document.getElementById('toast');e.textContent=m;e.cla
 
 // DESKTOP SIDEBAR
 function renderDeskSidebar(){
-  // Folders
   const folders=S.folders[S.ctx];
-  let h='<button class="ds-item '+(S.currentFolder==='All Notes'?'on':'')+'" onclick="S.currentFolder=\'All Notes\';renderNotes();renderDeskSidebar()"><svg class="i" style="color:var(--text-dim)"><use href="#i-file"/></svg>All Notes</button>';
+  let h='<button class="ds-item '+(S.currentFolder==='All Notes'?'on':'')+'" onclick="S.currentFolder=\'All Notes\';renderStream();renderDeskSidebar()"><svg class="i" style="color:var(--text-dim)"><use href="#i-file"/></svg>All Notes</button>';
   folders.forEach(f=>{
     if(f.n==='All Notes')return;
-    const hue=f.hue;
-    h+=`<button class="ds-item ${S.currentFolder===f.n?'on':''}" onclick="S.currentFolder='${f.n}';renderNotes();renderDeskSidebar()"><svg class="i" style="color:${hue||'var(--text-dim)'}"><use href="#i-folder"/></svg>${f.n}</button>`;
+    h+=`<button class="ds-item ${S.currentFolder===f.n?'on':''}" onclick="S.currentFolder='${f.n}';renderStream();renderDeskSidebar()"><svg class="i" style="color:${f.hue||'var(--text-dim)'}"><use href="#i-folder"/></svg>${f.n}</button>`;
     if(f.subs){f.subs.forEach(sub=>{
-      h+=`<button class="ds-item ${S.currentFolder===sub.n?'on':''}" style="padding-left:40px;font-size:13px" onclick="S.currentFolder='${sub.n}';renderNotes();renderDeskSidebar()"><svg class="i-s" style="color:${sub.hue||'var(--text-dim)'}"><use href="#i-folder"/></svg>${sub.n}</button>`;
+      h+=`<button class="ds-item ${S.currentFolder===sub.n?'on':''}" style="padding-left:40px;font-size:13px" onclick="S.currentFolder='${sub.n}';renderStream();renderDeskSidebar()"><svg class="i-s" style="color:${sub.hue||'var(--text-dim)'}"><use href="#i-folder"/></svg>${sub.n}</button>`;
     });}
   });
   h+=`<button class="ds-item" onclick="openFE_new()" style="color:var(--accent)"><svg class="i" style="color:var(--accent)"><use href="#i-plus"/></svg>New Folder</button>`;
   document.getElementById('dsSidebarFolders').innerHTML=h;
-  // Sync tab highlights
   document.querySelectorAll('.ds-item[data-ds]').forEach(b=>b.classList.toggle('on',b.dataset.ds===S.screen));
 }
-
-// LOCALSTORAGE PERSISTENCE
-function saveState(){
-  try{localStorage.setItem('skrawl_notes',JSON.stringify(S.notes));
-  localStorage.setItem('skrawl_goals',JSON.stringify(S.goals));
-  localStorage.setItem('skrawl_ctx',S.ctx);
-  localStorage.setItem('skrawl_theme',S.theme);
-  localStorage.setItem('skrawl_vibe',S.vibe);}catch(e){}
-}
-function loadState(){
-  try{
-    const n=localStorage.getItem('skrawl_notes');if(n)S.notes=JSON.parse(n);
-    const g=localStorage.getItem('skrawl_goals');if(g)S.goals=JSON.parse(g);
-    const c=localStorage.getItem('skrawl_ctx');if(c){S.ctx=c;document.querySelector('.app')?.classList.toggle('biz',c==='business');}
-    const t=localStorage.getItem('skrawl_theme');if(t){S.theme=t;document.documentElement.dataset.theme=t;}
-    const v=localStorage.getItem('skrawl_vibe');if(v)S.vibe=parseInt(v);
-  }catch(e){}
-}
-
-// Override nav to also update desktop sidebar
-const _origNav=nav;
-nav=function(s){_origNav(s);renderDeskSidebar();};
-
-// Override setCtx to also update desktop sidebar
-const _origSetCtx=setCtx;
-setCtx=function(c){_origSetCtx(c);renderDeskSidebar();saveState();};
-
-// Auto-save on changes
-const _origToast=toast;
-toast=function(m){_origToast(m);saveState();};
-
-// Keyboard shortcuts
-document.addEventListener('keydown',e=>{
-  if(e.metaKey||e.ctrlKey){
-    if(e.key==='k'){e.preventDefault();nav('search');}
-    if(e.key==='n'){e.preventDefault();openNew('note');}
-  }
-});
+function saveState(){try{localStorage.setItem('skrawl_notes',JSON.stringify(S.notes));localStorage.setItem('skrawl_goals',JSON.stringify(S.goals));localStorage.setItem('skrawl_ctx',S.ctx);localStorage.setItem('skrawl_theme',S.theme);localStorage.setItem('skrawl_vibe',S.vibe);}catch(e){}}
+function loadState(){try{const n=localStorage.getItem('skrawl_notes');if(n)S.notes=JSON.parse(n);const g=localStorage.getItem('skrawl_goals');if(g)S.goals=JSON.parse(g);const c=localStorage.getItem('skrawl_ctx');if(c){S.ctx=c;document.querySelector('.app')?.classList.toggle('biz',c==='business');}const t=localStorage.getItem('skrawl_theme');if(t){S.theme=t;document.documentElement.dataset.theme=t;}const v=localStorage.getItem('skrawl_vibe');if(v)S.vibe=parseInt(v);}catch(e){}}
+const _origNav=nav;nav=function(s){_origNav(s);renderDeskSidebar();};
+const _origSetCtx=setCtx;setCtx=function(c){_origSetCtx(c);renderDeskSidebar();saveState();};
+const _origToast=toast;toast=function(m){_origToast(m);saveState();};
+document.addEventListener('keydown',e=>{if(e.metaKey||e.ctrlKey){if(e.key==='k'){e.preventDefault();nav('search');}if(e.key==='n'){e.preventDefault();openNew('auto');}}});
 
 // INIT
-loadState();
-initCP();renderAll();onSearch();renderDeskSidebar();
-// Apply loaded theme
-document.getElementById('themeT')?.classList.toggle('on',S.theme==='dark');
-document.getElementById('vibeSlider')&&(document.getElementById('vibeSlider').value=S.vibe);
+loadState();initCP();renderAll();onSearch();renderDeskSidebar();
 </script>
-
-</div><!-- /main-area -->
-</div><!-- /app -->
-
+</div></div>
 <a class="lt-btn" href="../prototype/index.html">
   <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-width="2"/></svg>
   Mobile
 </a>
-
 </body>
 </html>
