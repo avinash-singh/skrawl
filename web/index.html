@@ -1411,8 +1411,7 @@ function moveMulti(){openFP('move');}
 // BUILD TILE (notes + lists only — tasks rendered separately)
 function bTile(n,i){
   const pin=n.pin?'<div class="tile-pin"><svg><use href="#i-pin"/></svg></div>':'';
-  const typeBadge=n.type==='list'?'<div class="tile-badge tile-badge-list">List</div>':'<div class="tile-badge tile-badge-note">Note</div>';
-  const badge=typeBadge+(n.pri!==null&&n.pri!==undefined?priHtml(n.pri):'');
+  const badge=(n.pri!==null&&n.pri!==undefined?priHtml(n.pri):'');
   const sel=S.multiMode;
   const isSelected=S.selected.has(n.id);
   const selCircle=`<div class="tile-select ${sel?'vis':''} ${isSelected?'on':''}" onclick="toggleSelect(event,'${n.id}')"><svg><use href="#i-check"/></svg></div>`;
@@ -1435,13 +1434,13 @@ function bTile(n,i){
       ${selCircle}${pin}${badge}<div class="tile-title">${n.title||'Untitled'}</div>
       <div class="tile-progress"><div class="tile-progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
       <div class="tile-checks">${shown.map(x=>`<div class="tile-chk"><div class="tile-chk-box ${x.d?'ok':''}">${x.d?'<svg><use href="#i-check"/></svg>':''}</div><span class="tile-chk-txt ${x.d?'ok':''}">${x.t}</span></div>`).join('')}${rem>0?`<div class="tile-more">+${rem} more</div>`:''}</div>
-      <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
+      <div class="tile-foot">${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
   }
   const lines=n.body.split('\n').slice(0,i%3===0?5:3).join('<br>');
   return `<div class="tile ${isSelected?'selected':''}" style="${tileStyle}" onclick="${clickAction}" ${longPress}>
     ${selCircle}${pin}${badge}<div class="tile-title">${n.title||'Untitled'}</div>
     <div class="tile-body">${lines||'<span style="color:var(--text-muted)">Empty</span>'}</div>
-    <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${n.tags.map(t=>`<span class="tile-pill tp-tag">${t}</span>`).join('')}${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
+    <div class="tile-foot">${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
 }
 
 function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderStream();renderGoals();}
@@ -1519,22 +1518,15 @@ function renderStream(){
   if(rest.length){
     if(pinned.length)h+=`<div class="sub-label" style="margin:12px 0 10px">Others</div>`;
     // Separate tasks (compact) from rich items (tiles)
-    const tasks=rest.filter(n=>isTask(n));
-    const rich=rest.filter(n=>!isTask(n));
-    // Tasks first (compact rows)
-    if(tasks.length)h+=tasks.map(n=>buildTaskRow(n)).join('');
-    // Then notes/lists as tiles
-    if(rich.length)h+=`<div class="note-grid">`+rich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
+    // All items in one grid
+    h+=`<div class="note-grid">`+rest.map((n,i)=>isTask(n)?buildTaskRow(n):bTile(n,i)).join('')+`</div>`;
   }
 
   // Completed
   if(done.length){
     h+=`<div style="margin:14px 0 6px"><button class="show-done-cta ${S.showDone?'open':''}" onclick="S.showDone=!S.showDone;renderStream()"><svg class="i-s"><use href="#i-right"/></svg>${done.length} completed</button></div>`;
     if(S.showDone){
-      const doneTasks=done.filter(n=>isTask(n));
-      const doneRich=done.filter(n=>!isTask(n));
-      if(doneTasks.length)h+=doneTasks.map(n=>buildTaskRow(n,true)).join('');
-      if(doneRich.length)h+=`<div class="note-grid">`+doneRich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
+      h+=`<div class="note-grid">`+done.map((n,i)=>isTask(n)?buildTaskRow(n,true):bTile(n,i)).join('')+`</div>`;
     }
   }
 
@@ -1542,22 +1534,22 @@ function renderStream(){
   if(S.taskInputOpen)setTimeout(()=>document.getElementById('taskInput')?.focus(),50);
 }
 
-// Build task card (vertical mini-tile)
+// Build task as a tile (same structure as notes/lists)
 function buildTaskRow(n,isDone){
   const d=isDone||n.done;
   const folderHue=getFolderHue(n.folder);
   const inFolder=S.currentFolder!=='All Notes';
-  let style='';
-  if(inFolder){style='background:var(--bg);border-color:var(--border)';}
-  else if(folderHue){style=`background:${hueToRGBA(folderHue,0.06)};border-color:${hueToRGBA(folderHue,0.1)}`;}
-  const folderPill=folderHue?`<span class="tile-pill tp-folder" style="background:${hueToRGBA(folderHue,0.15)};color:${folderHue};font-size:9px">${n.folder}</span>`:`<span class="tile-pill tp-folder" style="font-size:9px">${n.folder}</span>`;
-  const priBadge=!d?priHtml(n.pri):'';
-  const remBadge=n.reminder&&!d?`<span class="task-rem"><svg><use href="#i-bell"/></svg>${n.reminder}</span>`:'';
-  return `<div class="task-row ${d?'done':''}" style="${style}" onclick="openNote('${n.id}')">
-    <div class="task-info"><div class="task-text ${d?'ok':''}">${n.title}</div></div>
-    <div class="task-bottom">
-      <div class="task-chk ${d?'ok':''}" onclick="event.stopPropagation();toggleTask('${n.id}')"><svg><use href="#i-check"/></svg></div>
-      ${priBadge}${remBadge}${!d?folderPill:''}
+  let tileStyle='';
+  if(inFolder){tileStyle='background:var(--bg);border-color:var(--border)';}
+  else if(folderHue){tileStyle=`background:${hueToRGBA(folderHue,0.08)};border-color:${hueToRGBA(folderHue,0.12)}`;}
+  const priBadge=!d&&n.pri!==null&&n.pri!==undefined?priHtml(n.pri):'';
+  const remBadge=n.reminder&&!d?`<span class="tp-time" style="display:flex;align-items:center;gap:3px"><svg style="width:9px;height:9px;stroke:var(--accent);fill:none"><use href="#i-bell"/></svg>${n.reminder}</span>`:'';
+  return `<div class="tile ${d?'is-done':''}" style="${tileStyle}" onclick="openNote('${n.id}')">
+    ${priBadge}
+    <div class="tile-title" style="${d?'text-decoration:line-through;color:var(--text-muted)':''}">${n.title}</div>
+    <div class="tile-foot" style="margin-top:auto">
+      <div class="task-chk ${d?'ok':''}" onclick="event.stopPropagation();toggleTask('${n.id}')" style="width:18px;height:18px;border-radius:5px"><svg><use href="#i-check"/></svg></div>
+      ${remBadge}<span class="tp-time">${n.time}</span>
     </div>
   </div>`;
 }
