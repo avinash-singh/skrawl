@@ -155,7 +155,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#000;display:flex;justi
 
 /* ===== TASKS SECTION (inline compact) ===== */
 .tasks-section{padding:0 20px 12px}
-.task-row{display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:8px;cursor:pointer;transition:all .15s;max-width:calc(50% - 5px)}
+.task-row{display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);cursor:pointer;transition:all .15s;width:calc(50% - 4px);flex-shrink:0}
 .task-row:hover{border-color:var(--border2);background:var(--bg-card-hover)}
 .task-row.done{opacity:.5}
 .task-chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
@@ -1322,8 +1322,7 @@ function moveMulti(){openFP('move');}
 // BUILD TILE (notes + lists only — tasks rendered separately)
 function bTile(n,i){
   const pin=n.pin?'<div class="tile-pin"><svg><use href="#i-pin"/></svg></div>':'';
-  const typeBadge=n.type==='list'?'<div class="tile-badge tile-badge-list">List</div>':'<div class="tile-badge tile-badge-note">Note</div>';
-  const badge=typeBadge+(n.pri!==null&&n.pri!==undefined?priHtml(n.pri):'');
+  const badge=(n.pri!==null&&n.pri!==undefined?priHtml(n.pri):'');
   const sel=S.multiMode;
   const isSelected=S.selected.has(n.id);
   const selCircle=`<div class="tile-select ${sel?'vis':''} ${isSelected?'on':''}" onclick="toggleSelect(event,'${n.id}')"><svg><use href="#i-check"/></svg></div>`;
@@ -1346,7 +1345,7 @@ function bTile(n,i){
       ${selCircle}${pin}${badge}<div class="tile-title">${n.title||'Untitled'}</div>
       <div class="tile-progress"><div class="tile-progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
       <div class="tile-checks">${shown.map(x=>`<div class="tile-chk"><div class="tile-chk-box ${x.d?'ok':''}">${x.d?'<svg><use href="#i-check"/></svg>':''}</div><span class="tile-chk-txt ${x.d?'ok':''}">${x.t}</span></div>`).join('')}${rem>0?`<div class="tile-more">+${rem} more</div>`:''}</div>
-      <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
+      <div class="tile-foot">${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
   }
   // Show more content, scale font by length
   const bodyLen=n.body.length;
@@ -1357,7 +1356,7 @@ function bTile(n,i){
   return `<div class="tile ${isSelected?'selected':''}" style="${tileStyle}" onclick="${clickAction}" ${longPress}>
     ${selCircle}${pin}${badge}<div class="tile-title" style="font-size:${titleSize}">${n.title||'Untitled'}</div>
     <div class="tile-body" style="font-size:${fontSize};line-height:1.6">${lines||'<span style="color:var(--text-muted)">Empty</span>'}</div>
-    <div class="tile-foot"><span class="tile-pill tp-folder" style="${folderPillStyle}">${n.folder}</span>${n.tags.map(t=>`<span class="tile-pill tp-tag">${t}</span>`).join('')}${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
+    <div class="tile-foot">${remBadge}<span class="tp-time">${n.time}</span></div></div>`;
 }
 
 function renderAll(){S.taskInputOpen=false;rotateQuote();updateAIBanner();renderStream();renderGoals();}
@@ -1438,7 +1437,7 @@ function renderStream(){
     const tasks=rest.filter(n=>isTask(n));
     const rich=rest.filter(n=>!isTask(n));
     // Tasks first (compact rows)
-    if(tasks.length)h+=tasks.map(n=>buildTaskRow(n)).join('');
+    if(tasks.length)h+=`<div style="display:flex;flex-wrap:wrap;gap:8px">`+tasks.map(n=>buildTaskRow(n)).join('')+`</div>`;
     // Then notes/lists as tiles
     if(rich.length)h+=`<div class="note-grid">`+rich.map((n,i)=>bTile(n,i)).join('')+`</div>`;
   }
