@@ -96,11 +96,17 @@ skrawl/
 
 ### Data Models
 
-**Note**: id, title, body, context (personal|business), folder_id, color, is_checklist, checklist_items[], tags[], created_at, updated_at, deleted_at, synced_at, is_dirty
+**Note**: id, title, body, context (personal|business), folder_id, color, is_checklist, checklist_items[], tags[], images[], priority (null|0-3), manual_order, recurrence (null|cron_expression|natural_text), created_at, updated_at, deleted_at, synced_at, is_dirty
 
 **Folder**: id, name, context, parent_id, icon, order, created_at, updated_at, is_dirty
 
-**Reminder**: id, note_id, text, remind_at, calendar_event_id, context, status, ai_suggested, created_at, is_dirty
+**Reminder**: id, note_id, text, remind_at, calendar_event_id, context, status, ai_suggested, auto_set, created_at, is_dirty
+
+**FocusSession**: id, note_id, duration_planned, duration_actual, started_at, completed_at, context
+
+**MealEntry**: id, goal_id, description, image_url, calories_detected, calories_override, meal_type (breakfast|lunch|dinner|snack), ai_confidence, source (manual|image|suggestion), created_at, is_dirty
+
+**ExerciseEntry**: id, goal_id, type, duration_min, calories_burned, source (manual|health_kit), created_at, is_dirty
 
 ### Key Architecture Decisions
 
@@ -119,25 +125,44 @@ skrawl/
 | **Phase 1** | |
 | 1.1 | Build HTML prototype |
 | 1.2 | User review + iterate |
-| **Phase 2** | |
+| **Phase 2 — Core** | |
 | 2.1 | Init Expo project, install deps, configure TS |
 | 2.2 | Theme system (colors, typography, ThemeProvider) |
-| 2.3 | SQLite database + migrations |
+| 2.3 | SQLite database + migrations (include new models: FocusSession, MealEntry, ExerciseEntry) |
 | 2.4 | Data models + Zustand stores |
 | 2.5 | Navigation skeleton (Expo Router, tabs, stack) |
-| 2.6 | Home screen + note list + context toggle |
-| 2.7 | Note editor (text editing, auto-save) |
-| 2.8 | Checklist mode |
-| 2.9 | Color picker |
-| 2.10 | Folder management |
+| 2.6 | Home screen — compact row list + swipe actions + drag to reorder |
+| 2.7 | Quick capture (FAB tap + long-press voice) + detail bottom sheet |
+| 2.8 | Checklist mode + image attachments |
+| 2.9 | Color picker + quick priority change |
+| 2.10 | Folder management + smart categorization (AI auto-folder) |
 | 2.11 | Search (FTS5) |
-| 2.12 | Voice input |
-| 2.13 | AI reminder suggestions (Claude API) |
-| 2.14 | Calendar integration |
-| 2.15 | Supabase auth + sync engine |
-| 2.16 | Settings screen |
-| 2.17 | Slash commands + inline tags |
-| 2.18 | Polish: animations, haptics, onboarding |
+| 2.12 | Voice input + natural language parsing (title + reminder extraction) |
+| 2.13 | Undo toast system (global undo for destructive/AI actions) |
+| **Phase 2 — AI & Automation** | |
+| 2.14 | AI reminder suggestions + auto-set for critical tasks (Claude API) |
+| 2.15 | Auto-title / summarize note (Claude API) |
+| 2.16 | Natural language recurring tasks ("Every Monday", "Daily at 9am") |
+| 2.17 | Daily briefing notification |
+| 2.18 | Focus mode with pomodoro/countdown timer |
+| **Phase 2 — Goals & Health** | |
+| 2.19 | Goal setting AI assistant (suggest targets, adjust difficulty) |
+| 2.20 | Calorie intake meal updater (image/NL → calorie detection, time-based suggestions, exercise adjustment) |
+| 2.21 | Apple Health / fitness sync for exercise-based calorie adjustment |
+| **Phase 2 — Infrastructure** | |
+| 2.22 | Calendar integration |
+| 2.23 | Supabase auth + sync engine |
+| 2.24 | Export (plain text + PDF) |
+| 2.25 | Settings screen (swipe customization, AI vibe, integrations) |
+| 2.26 | Slash commands + inline tags |
+| **Phase 2 — Widgets** | |
+| 2.27 | Top items widget (3-5 prioritized items) |
+| 2.28 | Quick add widget (single-tap create) |
+| 2.29 | Speech input widget (one-tap voice capture) |
+| 2.30 | AI assistant widget (briefing, suggestions) |
+| 2.31 | Goal streak widget (ring visualizations) |
+| **Phase 2 — Polish** | |
+| 2.32 | Animations, haptics, onboarding, first-time tooltips |
 
 ### Verification
 - **Prototype**: Open `prototype/index.html` in browser. Test all screens, theme toggle, context switch, note creation, checklist mode, AI popup, search, color picker.
@@ -168,10 +193,42 @@ Analyzed 12 apps (Apple Notes, Bear, Notion, Obsidian, Google Keep, Simplenote, 
 - Slash commands (/, Heading, Checklist, Reminder, Color)
 - Quick capture widget
 - Natural language date parsing in reminders
+- **Drag to reorder** — Long-press + drag to manually sort items within the same priority group. Persist manual order in DB.
+- **Undo toast** — On any destructive/automatic action (mark done, delete, AI auto-updates), show a toast with "Undo" button (5s window).
+- **Quick priority change** — Partial swipe to reveal P0-P3 buttons, change priority without opening detail sheet.
+- **Image attachments** — Attach photos to notes/tasks from detail sheet. Thumbnail indicator on row. Store via Supabase Storage.
+- **Natural language input** — Parse "Call dentist tomorrow at 2pm" into structured title + reminder automatically using Claude.
+- **Auto-recurring tasks** — Natural language recurrence: "Every Monday", "Daily at 9am", "First of every month". Auto-recreate completed tasks on schedule.
+- **Export** — Export any note as plain text or PDF from the action sheet.
+
+**Include in v1 — AI Features:**
+- **Auto reminder set** — AI analyzes critical/time-sensitive tasks and auto-suggests or auto-sets reminders. User gets undo toast to revert.
+- **Smart categorization** — AI auto-suggests folder and priority on creation based on content analysis. Suggestion shown as dismissable chip, not auto-applied.
+- **Daily briefing** — Morning notification: what's due today, what's overdue, streak progress, AI-prioritized "start with this" suggestion.
+- **Summarize note / Auto-title** — For notes with body content, AI generates a 1-line title. Shown as suggestion in the detail sheet.
+- **Focus mode** — Tap a single item to enter distraction-free view with just that item and a countdown/pomodoro timer. Track focus sessions.
+
+**Include in v1 — Widgets:**
+- **Top items widget** — Shows top 3-5 prioritized items on home screen.
+- **Quick add widget** — Single-tap to create from home screen, opens directly into capture.
+- **Speech input widget** — One-tap voice capture from home screen, creates note via speech-to-text.
+- **AI assistant widget** — Quick access to AI features (briefing, suggestions, search).
+- **Goal streak widget** — Shows current streak progress for active goals with ring visualizations.
+
+**Include in v1 — Goals & Health:**
+- **Goal Setting AI Assistant** — AI-powered goal creation: suggest targets based on user profile, adjust difficulty based on history, recommend related goals.
+- **Calorie Intake Meal Updater:**
+  - Allow image upload or natural language meal description ("grilled chicken with rice and salad")
+  - Auto-detect calories from description/image using Claude vision
+  - Auto-suggest meal entries based on user history and time of day (e.g., suggest "morning coffee 50cal" at 8am)
+  - Adjust daily calorie target dynamically based on logged exercise/gym activity (e.g., burned 400cal at gym → increase intake allowance)
+  - Weekly nutrition summary with trends
 
 **Consider for v2:**
 - Bidirectional note links / backlinks
 - Smart resurfacing ("On this day")
 - One-click share as web page
 - AI-powered natural language search
-- Pomodoro / focus timer tied to tasks
+- Shared lists & task assignment (collaboration)
+- Note version history
+- Batch operations (multi-select + bulk actions)
