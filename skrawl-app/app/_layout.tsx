@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { StatusBar } from 'expo-status-bar';
 import { initDatabase } from '@/src/services/database';
 import { seedIfEmpty } from '@/src/services/seed';
 import { useUIStore } from '@/src/store/ui-store';
+import { useSyncStore } from '@/src/store/sync-store';
+import { NudgeToast } from '@/src/components/common/NudgeToast';
 import 'react-native-reanimated';
 
 export { ErrorBoundary } from 'expo-router';
@@ -19,24 +23,56 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [dbReady, setDbReady] = useState(false);
   const theme = useUIStore((s) => s.theme);
+  const initAuth = useSyncStore((s) => s.initAuth);
 
   useEffect(() => {
     initDatabase()
       .then(() => seedIfEmpty())
+      .then(() => initAuth())
       .then(() => setDbReady(true))
       .then(() => SplashScreen.hideAsync())
       .catch(console.error);
   }, []);
 
-  if (!dbReady) return null;
+  if (!dbReady) {
+    return (
+      <View style={loadStyles.container}>
+        <Text style={loadStyles.logo}>
+          <Text style={{ color: '#F0F0F5' }}>Skrawl</Text>
+          <Text style={{ color: '#FF6AC2' }}>.</Text>
+        </Text>
+        <ActivityIndicator size="small" color="#7C6AFF" style={{ marginTop: 20 }} />
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="settings" options={{ presentation: 'modal', animation: 'slide_from_right' }} />
-      </Stack>
+      <BottomSheetModalProvider>
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="settings" options={{ presentation: 'modal', animation: 'slide_from_right' }} />
+          <Stack.Screen name="focus" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
+          <Stack.Screen name="notifications" options={{ presentation: 'modal', animation: 'slide_from_right' }} />
+        </Stack>
+      </BottomSheetModalProvider>
+      <NudgeToast />
     </GestureHandlerRootView>
   );
 }
+
+const loadStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0C0C0F',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1.5,
+  },
+});

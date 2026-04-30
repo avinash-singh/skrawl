@@ -1,5 +1,5 @@
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useThemeColors, radii } from '@/src/theme';
 import { useUIStore } from '@/src/store/ui-store';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,7 +10,7 @@ export function ContextToggle() {
   const setContext = useUIStore((s) => s.setContext);
 
   const pillStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: withSpring(context === 'personal' ? 0 : 39, { damping: 15, stiffness: 200 }) }],
+    transform: [{ translateX: withTiming(context === 'personal' ? 0 : 39, { duration: 200, easing: Easing.out(Easing.cubic) }) }],
     backgroundColor: context === 'personal' ? c.accent : '#3D8BFF',
   }));
 

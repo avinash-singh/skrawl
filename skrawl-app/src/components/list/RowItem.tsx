@@ -1,12 +1,18 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useThemeColors, colors, typography, radii } from '@/src/theme';
 import { useNoteStore } from '@/src/store/note-store';
+import { useUIStore } from '@/src/store/ui-store';
+import { useNudgeStore } from '@/src/store/nudge-store';
 import type { Note } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface Props {
   note: Note;
   index: number;
+  onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -15,9 +21,11 @@ const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   task: 'checkmark-circle-outline',
 };
 
-export function RowItem({ note, index }: Props) {
+export function RowItem({ note, index, onPress, onLongPress }: Props) {
   const c = useThemeColors();
   const toggleDone = useNoteStore((s) => s.toggleDone);
+  const vibeValue = useUIStore((s) => s.vibeValue);
+  const onNoteCompleted = useNudgeStore((s) => s.onNoteCompleted);
   const n = note;
   const d = n.isDone;
 
@@ -44,15 +52,32 @@ export function RowItem({ note, index }: Props) {
   const pri = n.priority;
   const priColor = pri !== null ? colors.priority[pri] : null;
 
+  const handleCheckbox = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!n.isDone) onNoteCompleted(vibeValue);
+    toggleDone(n.id);
+  };
+
   return (
-    <View style={[styles.wrap, { backgroundColor: c.bgCard, borderColor: c.border }]}>
+    <Animated.View entering={FadeInRight.delay(index * 40).duration(250).springify()}>
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
+      style={[styles.wrap, { backgroundColor: c.bgCard, borderColor: c.border }]}
+      accessibilityRole="button"
+      accessibilityLabel={`${n.type}: ${n.title || 'Untitled'}${n.priority !== null ? `, priority ${n.priority}` : ''}${d ? ', completed' : ''}`}
+    >
       {/* Left accent stripe */}
       {!d && <View style={[styles.stripe, { backgroundColor: accentColor }]} />}
 
       {/* Checkbox */}
       <Pressable
-        onPress={() => toggleDone(n.id)}
+        onPress={handleCheckbox}
         style={[styles.checkbox, d ? styles.checkboxDone : { borderColor: c.border2 }]}
+        hitSlop={8}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: d }}
       >
         {d && <Ionicons name="checkmark" size={14} color="#fff" />}
       </Pressable>
@@ -83,6 +108,8 @@ export function RowItem({ note, index }: Props) {
 
       {/* Trailing */}
       <View style={styles.trailing}>
+        {n.recurrence && !d && <Ionicons name="repeat-outline" size={13} color={c.accent2} />}
+        {n.images.length > 0 && !d && <Ionicons name="image-outline" size={13} color={c.textMuted} />}
         {n.isPinned && !d && <Ionicons name="pin" size={13} color={c.accent} />}
         {priColor && !d && (
           <View style={[styles.priBadge, { backgroundColor: `${priColor}22` }]}>
@@ -105,7 +132,8 @@ export function RowItem({ note, index }: Props) {
           />
         </View>
       )}
-    </View>
+    </Pressable>
+    </Animated.View>
   );
 }
 

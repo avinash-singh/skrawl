@@ -4,6 +4,7 @@ import type { Context, NoteType } from '@/src/models';
 
 export type SortBy = 'priority' | 'date';
 export type SwipeAction = 'done' | 'pin' | 'delete' | 'archive';
+export type ReminderIntensity = 'gentle' | 'balanced' | 'aggressive';
 
 interface UIState {
   theme: ThemeMode;
@@ -14,6 +15,8 @@ interface UIState {
   swipeRightAction: SwipeAction;
   currentFolder: string | null; // null = All Notes
   showDone: boolean;
+  reminderIntensity: ReminderIntensity;
+  vibeValue: number;
 
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
@@ -24,6 +27,8 @@ interface UIState {
   setSwipeRight: (action: SwipeAction) => void;
   setCurrentFolder: (folder: string | null) => void;
   setShowDone: (show: boolean) => void;
+  setReminderIntensity: (intensity: ReminderIntensity) => void;
+  setVibeValue: (value: number) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -31,10 +36,12 @@ export const useUIStore = create<UIState>((set) => ({
   context: 'personal',
   sortBy: 'priority',
   defaultMode: 'task',
-  swipeLeftAction: 'done',
-  swipeRightAction: 'pin',
+  swipeLeftAction: 'pin',
+  swipeRightAction: 'done',
   currentFolder: null,
   showDone: false,
+  reminderIntensity: 'balanced',
+  vibeValue: 50,
 
   setTheme: (theme) => set({ theme }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
@@ -45,4 +52,6 @@ export const useUIStore = create<UIState>((set) => ({
   setSwipeRight: (swipeRightAction) => set({ swipeRightAction }),
   setCurrentFolder: (currentFolder) => set({ currentFolder }),
   setShowDone: (showDone) => set({ showDone }),
+  setReminderIntensity: (reminderIntensity) => set({ reminderIntensity }),
+  setVibeValue: (vibeValue) => set({ vibeValue }),
 }));

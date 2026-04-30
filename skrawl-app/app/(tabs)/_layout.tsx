@@ -33,13 +33,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="goals"
-        options={{
-          title: 'Goals',
-          tabBarIcon: ({ color, size }) => <Ionicons name="flag-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="calendar"
         options={{
           title: 'Calendar',
@@ -51,6 +44,12 @@ export default function TabLayout() {
         options={{
           title: 'Search',
           tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="goals"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

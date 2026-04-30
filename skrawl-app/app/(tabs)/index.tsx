@@ -1,21 +1,36 @@
-import { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-import { FlatList } from 'react-native';
-import { useThemeColors, typography, spacing } from '@/src/theme';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore } from '@/src/store/ui-store';
 import { useNoteStore } from '@/src/store/note-store';
 import { useFolderStore } from '@/src/store/folder-store';
+import { useUndoStore } from '@/src/store/undo-store';
+import { useReminderStore } from '@/src/store/reminder-store';
+import { getQuote } from '@/src/services/nudges';
+import { useNudgeStore } from '@/src/store/nudge-store';
 import { RowItem } from '@/src/components/list/RowItem';
+import { SwipeableRow } from '@/src/components/list/SwipeableRow';
 import { ContextToggle } from '@/src/components/common/ContextToggle';
+import { SortDropdown } from '@/src/components/common/SortDropdown';
+import { MorphingFAB } from '@/src/components/common/MorphingFAB';
+import { QuickCapture } from '@/src/components/capture/QuickCapture';
+import { VoiceInput } from '@/src/components/capture/VoiceInput';
+import { DetailSheet } from '@/src/components/detail/DetailSheet';
+import { UndoToast } from '@/src/components/common/UndoToast';
+import { FolderDrawer } from '@/src/components/folders/FolderDrawer';
+import { QuickPriority } from '@/src/components/list/QuickPriority';
+import { DraggableList } from '@/src/components/list/DraggableList';
 import type { Note } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 
 type ListItem =
-  | { type: 'header'; title: string }
-  | { type: 'greeting' }
-  | { type: 'note'; note: Note }
-  | { type: 'done-toggle'; count: number };
+  | { type: 'header'; title: string; key: string }
+  | { type: 'greeting'; key: string }
+  | { type: 'ai-banner'; key: string }
+  | { type: 'note'; note: Note; key: string }
+  | { type: 'done-toggle'; count: number; key: string };
 
 export default function HomeScreen() {
   const c = useThemeColors();
@@ -24,18 +39,50 @@ export default function HomeScreen() {
   const sortBy = useUIStore((s) => s.sortBy);
   const showDone = useUIStore((s) => s.showDone);
   const setShowDone = useUIStore((s) => s.setShowDone);
+  const swipeLeftAction = useUIStore((s) => s.swipeLeftAction);
+  const swipeRightAction = useUIStore((s) => s.swipeRightAction);
   const notes = useNoteStore((s) => s.notes);
   const loadNotes = useNoteStore((s) => s.loadNotes);
+  const toggleDone = useNoteStore((s) => s.toggleDone);
+  const togglePin = useNoteStore((s) => s.togglePin);
+  const deleteNote = useNoteStore((s) => s.deleteNote);
+  const restoreNote = useNoteStore((s) => s.restoreNote);
   const loadFolders = useFolderStore((s) => s.loadFolders);
+  const pushUndo = useUndoStore((s) => s.push);
+  const reminders = useReminderStore((s) => s.reminders);
+  const loadReminders = useReminderStore((s) => s.loadReminders);
+  const vibeValue = useUIStore((s) => s.vibeValue);
+  const { onNoteCompleted, onAllP0sClear, onNoteDeleted } = useNudgeStore();
+
+  const currentFolder = useUIStore((s) => s.currentFolder);
+  const setCurrentFolder = useUIStore((s) => s.setCurrentFolder);
+  const folders = useFolderStore((s) => s.folders);
+
+  const [captureVisible, setCaptureVisible] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [detailNoteId, setDetailNoteId] = useState<string | null>(null);
+  const [folderDrawerOpen, setFolderDrawerOpen] = useState(false);
+  const [quickPriorityNoteId, setQuickPriorityNoteId] = useState<string | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+
+  const updateNote = useNoteStore((s) => s.updateNote);
+  const getNoteById = useNoteStore((s) => s.getNoteById);
+  const reorderNotes = useNoteStore((s) => s.reorderNotes);
 
   useEffect(() => {
     loadNotes(context);
     loadFolders(context);
+    loadReminders();
   }, [context]);
 
   const { pinned, rest, done } = useMemo(() => {
-    const active = notes.filter((n) => !n.isDone);
-    const completed = notes.filter((n) => n.isDone);
+    const filtered = currentFolder
+      ? notes.filter((n) => n.folderId === currentFolder)
+      : notes;
+    const active = filtered.filter((n) => !n.isDone);
+    const completed = filtered.filter((n) => n.isDone);
     const sorted = [...active].sort((a, b) => {
       if (sortBy === 'priority') {
         const pa = a.priority ?? 99;
@@ -49,56 +96,384 @@ export default function HomeScreen() {
       rest: sorted.filter((n) => !n.isPinned),
       done: completed,
     };
-  }, [notes, sortBy]);
+  }, [notes, sortBy, currentFolder]);
+
+  // Upcoming reminders
+  const upcomingReminders = useMemo(() => {
+    const now = new Date();
+    return reminders
+      .filter((r) => new Date(r.remindAt) >= now)
+      .sort((a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime())
+      .slice(0, 3);
+  }, [reminders]);
+
+  // AI insight — smart, contextual, interactive
+  const aiInsight = useMemo(() => {
+    const active = notes.filter((n) => !n.isDone);
+    const p0s = active.filter((n) => n.priority === 0);
+    const p1s = active.filter((n) => n.priority === 1);
+    const overdue = reminders.filter((r) => new Date(r.remindAt) < new Date());
+    const noPriority = active.filter((n) => n.priority === null);
+    const stale = active.filter((n) => {
+      const age = Date.now() - new Date(n.updatedAt).getTime();
+      return age > 3 * 24 * 60 * 60 * 1000; // 3+ days old
+    });
+
+    // Priority: too many P0s
+    if (p0s.length >= 5) {
+      return {
+        type: 'p0-overload' as const,
+        icon: 'alert-circle' as const,
+        iconColor: '#FF5A5A',
+        text: `${p0s.length} items at P0 — everything can't be critical`,
+        subtext: 'Tap to review and re-prioritize',
+        actions: p0s.slice(0, 3).map((n) => ({ id: n.id, title: n.title, label: 'Downgrade to P1' })),
+      };
+    }
+
+    // Due soon — suggest upgrading to P0
+    const now = new Date();
+    const twoDays = 2 * 24 * 60 * 60 * 1000;
+    const dueSoon = reminders
+      .filter((r) => {
+        const remindTime = new Date(r.remindAt).getTime();
+        const delta = remindTime - now.getTime();
+        return delta > 0 && delta < twoDays; // due within 2 days
+      })
+      .map((r) => {
+        const note = active.find((n) => n.id === r.noteId);
+        return note && note.priority !== 0 ? { note, reminder: r } : null;
+      })
+      .filter(Boolean) as { note: Note; reminder: typeof reminders[0] }[];
+
+    if (dueSoon.length > 0) {
+      const timeLeft = (ms: number) => {
+        const mins = Math.round(ms / 60000);
+        if (mins < 60) return `${mins}m`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ${mins % 60}m`;
+        const days = Math.floor(hrs / 24);
+        return days === 1 ? `1 day` : `${days} days`;
+      };
+      return {
+        type: 'due-soon' as const,
+        icon: 'trending-up' as const,
+        iconColor: '#FF6AC2',
+        text: `"${dueSoon[0].note.title}" is due in ${timeLeft(new Date(dueSoon[0].reminder.remindAt).getTime() - now.getTime())}`,
+        subtext: dueSoon[0].note.priority !== null ? `Currently P${dueSoon[0].note.priority} — upgrade to critical?` : 'No priority set — make it critical?',
+        actions: [
+          ...dueSoon.slice(0, 2).map((d) => ({ id: d.note.id, title: d.note.title, label: 'Upgrade to P0' })),
+          { id: dueSoon[0].note.id, title: '', label: 'Open' },
+        ],
+      };
+    }
+
+    // Overdue reminders
+    if (overdue.length > 0) {
+      const overdueNote = notes.find((n) => n.id === overdue[0].noteId);
+      return {
+        type: 'overdue' as const,
+        icon: 'alarm' as const,
+        iconColor: '#FFB86A',
+        text: `${overdue.length} overdue reminder${overdue.length > 1 ? 's' : ''} — "${overdueNote?.title || 'Untitled'}"`,
+        subtext: 'Reschedule or mark done',
+        actions: [
+          { id: overdueNote?.id || '', title: 'Reschedule to tomorrow', label: 'Tomorrow' },
+          { id: overdueNote?.id || '', title: 'Mark as done', label: 'Done' },
+        ],
+      };
+    }
+
+    // Items without priority
+    if (noPriority.length >= 3) {
+      return {
+        type: 'unorganized' as const,
+        icon: 'flag-outline' as const,
+        iconColor: '#6AB4FF',
+        text: `${noPriority.length} items have no priority set`,
+        subtext: 'Set priorities to stay on top of what matters',
+        actions: noPriority.slice(0, 2).map((n) => ({ id: n.id, title: n.title, label: 'Set priority' })),
+      };
+    }
+
+    // Stale items
+    if (stale.length >= 2) {
+      return {
+        type: 'stale' as const,
+        icon: 'time-outline' as const,
+        iconColor: '#B06AFF',
+        text: `${stale.length} items untouched for 3+ days`,
+        subtext: 'Still relevant? Complete or archive them',
+        actions: stale.slice(0, 2).map((n) => ({ id: n.id, title: n.title, label: 'Archive' })),
+      };
+    }
+
+    // P0/P1 focus suggestion
+    if (p0s.length > 0 || p1s.length > 0) {
+      const top = p0s[0] || p1s[0];
+      return {
+        type: 'focus' as const,
+        icon: 'flash-outline' as const,
+        iconColor: c.accent,
+        text: `Focus: "${top.title}"`,
+        subtext: `${p0s.length + p1s.length} high-priority item${p0s.length + p1s.length > 1 ? 's' : ''} remaining`,
+        actions: [{ id: top.id, title: 'Open', label: 'Start now' }],
+      };
+    }
+
+    // All clear
+    return {
+      type: 'clear' as const,
+      icon: 'checkmark-circle-outline' as const,
+      iconColor: '#6AFFCB',
+      text: 'All clear — inbox zero!',
+      subtext: 'Great time to capture new ideas',
+      actions: [] as { id: string; title: string; label: string }[],
+    };
+  }, [notes, reminders, c.accent]);
 
   const listData: ListItem[] = useMemo(() => {
-    const items: ListItem[] = [{ type: 'greeting' }];
+    const items: ListItem[] = [
+      { type: 'greeting', key: 'greeting' },
+      { type: 'ai-banner', key: 'ai-banner' },
+    ];
     if (pinned.length > 0) {
-      items.push({ type: 'header', title: `Pinned  ${pinned.length}` });
-      pinned.forEach((n) => items.push({ type: 'note', note: n }));
+      items.push({ type: 'header', title: `Pinned  ${pinned.length}`, key: 'header-pinned' });
+      pinned.forEach((n) => items.push({ type: 'note', note: n, key: n.id }));
     }
     if (rest.length > 0) {
-      if (pinned.length > 0) items.push({ type: 'header', title: `All Items  ${rest.length}` });
-      rest.forEach((n) => items.push({ type: 'note', note: n }));
+      if (pinned.length > 0) items.push({ type: 'header', title: `All Items  ${rest.length}`, key: 'header-all' });
+      rest.forEach((n) => items.push({ type: 'note', note: n, key: n.id }));
     }
-    if (done.length > 0) items.push({ type: 'done-toggle', count: done.length });
-    if (showDone) done.forEach((n) => items.push({ type: 'note', note: n }));
+    if (done.length > 0) items.push({ type: 'done-toggle', count: done.length, key: 'done-toggle' });
+    if (showDone) done.forEach((n) => items.push({ type: 'note', note: n, key: n.id }));
     return items;
   }, [pinned, rest, done, showDone]);
 
-  const renderItem = ({ item, index }: { item: ListItem; index: number }) => {
+  // Swipe action handlers
+  const executeSwipeAction = useCallback(
+    (action: string, note: Note) => {
+      switch (action) {
+        case 'done':
+          toggleDone(note.id);
+          if (!note.isDone) {
+            onNoteCompleted(vibeValue);
+            const remainingP0 = notes.filter((n) => !n.isDone && n.id !== note.id && n.priority === 0);
+            if (remainingP0.length === 0 && note.priority === 0) {
+              onAllP0sClear(vibeValue);
+            }
+          }
+          pushUndo(note.isDone ? 'Marked as incomplete' : 'Marked as done', async () => { await toggleDone(note.id); });
+          break;
+        case 'pin':
+          togglePin(note.id);
+          pushUndo(note.isPinned ? 'Unpinned' : 'Pinned', async () => { await togglePin(note.id); });
+          break;
+        case 'delete':
+          deleteNote(note.id);
+          onNoteDeleted(vibeValue);
+          pushUndo('Deleted', async () => { await restoreNote(note.id); await loadNotes(context); });
+          break;
+        case 'archive':
+          deleteNote(note.id);
+          onNoteDeleted(vibeValue);
+          pushUndo('Archived', async () => { await restoreNote(note.id); await loadNotes(context); });
+          break;
+      }
+    },
+    [context, toggleDone, togglePin, deleteNote, restoreNote, loadNotes, pushUndo]
+  );
+
+  // Multi-select handlers
+  const toggleSelect = (noteId: string) => {
+    setSelectedNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(noteId)) next.delete(noteId);
+      else next.add(noteId);
+      if (next.size === 0) setMultiSelectMode(false);
+      return next;
+    });
+  };
+
+  const bulkDelete = () => {
+    selectedNotes.forEach((id) => deleteNote(id));
+    pushUndo(`Deleted ${selectedNotes.size} items`, async () => {
+      for (const id of selectedNotes) { await restoreNote(id); }
+      await loadNotes(context);
+    });
+    setSelectedNotes(new Set());
+    setMultiSelectMode(false);
+  };
+
+  const bulkDone = () => {
+    selectedNotes.forEach((id) => toggleDone(id));
+    setSelectedNotes(new Set());
+    setMultiSelectMode(false);
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const renderItem = ({ item }: { item: ListItem }) => {
     switch (item.type) {
       case 'greeting':
         return (
           <View style={[styles.greetingWrap, { paddingHorizontal: spacing.xl }]}>
-            <View style={styles.greetingRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[typography.heading, { color: c.text }]}>Good morning, Avinash</Text>
-                <Text style={[typography.caption, { color: c.textMuted, marginTop: 2, fontStyle: 'italic' }]}>
-                  "Your mind is for having ideas, not holding them."
-                </Text>
-              </View>
+            <View style={styles.logoRow}>
+              <Text style={styles.logoText}>
+                <Text style={{ color: c.text }}>Skrawl</Text>
+                <Text style={{ color: '#FF6AC2' }}>.</Text>
+              </Text>
               <View style={styles.greetingActions}>
                 <ContextToggle />
-                <Pressable onPress={() => router.push('/settings')} style={[styles.iconBtn, { borderColor: c.border, backgroundColor: c.bgCard }]}>
+                <Pressable
+                  onPress={() => router.push('/settings')}
+                  style={[styles.iconBtn, { borderColor: c.border, backgroundColor: c.bgCard }]}
+                >
                   <Ionicons name="settings-outline" size={18} color={c.textDim} />
                 </Pressable>
               </View>
             </View>
+            <View style={{ marginTop: 4 }}>
+              <Text style={[typography.caption, { color: c.textMuted }]}>{getGreeting()}, Avinash</Text>
+              <Text style={[{ fontSize: 12, color: c.textDim, fontStyle: 'italic', marginTop: 2 }]}>
+                "{getQuote(vibeValue)}"
+              </Text>
+            </View>
+            {/* Sort + folder row */}
+            <View style={styles.sortRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <SortDropdown />
+                <Pressable
+                  style={[styles.folderBtn, { borderColor: currentFolder ? c.accent : c.border, backgroundColor: currentFolder ? c.accentGlow : 'transparent' }]}
+                  onPress={() => setFolderDrawerOpen(true)}
+                >
+                  <Ionicons name="folder-outline" size={13} color={currentFolder ? c.accent : c.textDim} />
+                  <Text style={[typography.caption, { color: currentFolder ? c.accent : c.textDim }]} numberOfLines={1}>
+                    {currentFolder ? (folders.find((f) => f.id === currentFolder)?.name || 'Folder') : 'All'}
+                  </Text>
+                </Pressable>
+              </View>
+              <Text style={[typography.caption, { color: c.textMuted }]}>{(pinned.length + rest.length)} items</Text>
+            </View>
           </View>
         );
+
+      case 'ai-banner':
+        return (
+          <View style={[styles.aiBanner, { backgroundColor: `${aiInsight.iconColor}12`, borderColor: `${aiInsight.iconColor}25` }]}>
+            {/* Glow accent */}
+            <View style={[styles.aiBannerGlow, { backgroundColor: aiInsight.iconColor }]} />
+            {/* Header row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 1 }}>
+              <View style={[styles.aiBannerIcon, { backgroundColor: `${aiInsight.iconColor}25`, borderColor: `${aiInsight.iconColor}40`, borderWidth: 1 }]}>
+                <Ionicons name={aiInsight.icon} size={18} color={aiInsight.iconColor} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.aiBannerText, { color: c.text }]} numberOfLines={2}>{aiInsight.text}</Text>
+                <Text style={[{ fontSize: 11, color: c.textDim, marginTop: 2 }]}>{aiInsight.subtext}</Text>
+              </View>
+            </View>
+            {/* Action buttons */}
+            {aiInsight.actions.length > 0 && (
+              <View style={[styles.aiActions, { zIndex: 1 }]}>
+                {aiInsight.actions.map((action, i) => (
+                  <Pressable
+                    key={`${action.id}-${i}`}
+                    style={[styles.aiActionBtn, { borderColor: `${aiInsight.iconColor}50`, backgroundColor: `${aiInsight.iconColor}18` }]}
+                    onPress={() => {
+                      if (aiInsight.type === 'p0-overload') {
+                        const note = getNoteById(action.id);
+                        if (note) updateNote({ ...note, priority: 1 });
+                      } else if (aiInsight.type === 'due-soon' && action.label === 'Upgrade to P0') {
+                        const note = getNoteById(action.id);
+                        if (note) updateNote({ ...note, priority: 0 });
+                      } else if (aiInsight.type === 'overdue' && action.label === 'Done') {
+                        toggleDone(action.id);
+                        onNoteCompleted(vibeValue);
+                      } else if (aiInsight.type === 'overdue' && action.label === 'Tomorrow') {
+                        // Reschedule reminder to tomorrow 9am
+                        const r = reminders.find((rem) => rem.noteId === action.id);
+                        if (r) {
+                          const tomorrow = new Date();
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          tomorrow.setHours(9, 0, 0, 0);
+                          // Dismiss old, nudge store handles feedback
+                        }
+                        setDetailNoteId(action.id);
+                      } else if (aiInsight.type === 'stale' && action.label === 'Archive') {
+                        deleteNote(action.id);
+                        onNoteDeleted(vibeValue);
+                      } else if (aiInsight.type === 'unorganized') {
+                        setDetailNoteId(action.id);
+                      } else {
+                        setDetailNoteId(action.id);
+                      }
+                    }}
+                  >
+                    {(aiInsight.type === 'p0-overload' || (aiInsight.type === 'due-soon' && action.title)) && (
+                      <Text style={[styles.aiActionTitle, { color: c.textDim }]} numberOfLines={1}>{action.title}</Text>
+                    )}
+                    <Text style={[styles.aiActionLabel, { color: aiInsight.iconColor }]}>{action.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        );
+
       case 'header':
         return (
           <View style={[styles.sectionLabel, { paddingHorizontal: spacing.xl }]}>
             <Text style={[typography.sectionHeader, { color: c.textMuted }]}>{item.title}</Text>
           </View>
         );
+
       case 'note':
         return (
           <View style={{ paddingHorizontal: spacing.xl, marginBottom: 6 }}>
-            <RowItem note={item.note} index={index} />
+            {multiSelectMode ? (
+              <Pressable onPress={() => toggleSelect(item.note.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[styles.selectBox, selectedNotes.has(item.note.id) && { backgroundColor: c.accent, borderColor: c.accent }]}>
+                  {selectedNotes.has(item.note.id) && <Ionicons name="checkmark" size={14} color="#fff" />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <RowItem note={item.note} index={0} onPress={() => toggleSelect(item.note.id)} />
+                </View>
+              </Pressable>
+            ) : quickPriorityNoteId === item.note.id ? (
+              <QuickPriority
+                currentPriority={item.note.priority}
+                onSelect={(pri) => { const note = getNoteById(item.note.id); if (note) updateNote({ ...note, priority: pri }); }}
+                onClose={() => setQuickPriorityNoteId(null)}
+              />
+            ) : (
+              <SwipeableRow
+                onSwipeLeft={() => executeSwipeAction(swipeLeftAction, item.note)}
+                onSwipeRight={() => executeSwipeAction(swipeRightAction, item.note)}
+                onPriorityChange={(pri) => { const note = getNoteById(item.note.id); if (note) updateNote({ ...note, priority: pri }); }}
+                currentPriority={item.note.priority}
+                isDone={item.note.isDone}
+                isPinned={item.note.isPinned}
+              >
+                <RowItem
+                  note={item.note}
+                  index={0}
+                  onPress={() => { setCaptureVisible(false); setVoiceMode(false); setDetailNoteId(item.note.id); }}
+                  onLongPress={() => {
+                    setMultiSelectMode(true);
+                    setSelectedNotes(new Set([item.note.id]));
+                  }}
+                />
+              </SwipeableRow>
+            )}
           </View>
         );
+
       case 'done-toggle':
         return (
           <Pressable onPress={() => setShowDone(!showDone)} style={[styles.doneCta, { paddingHorizontal: spacing.xl }]}>
@@ -106,29 +481,96 @@ export default function HomeScreen() {
             <Text style={[typography.caption, { color: c.textMuted }]}>{item.count} completed</Text>
           </Pressable>
         );
+
       default:
         return null;
     }
   };
 
+  if (reorderMode) {
+    return (
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <View style={{ paddingTop: 60 }} />
+        <DraggableList notes={[...pinned, ...rest]} onReorder={(ids) => reorderNotes(ids)} onDone={() => setReorderMode(false)} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
-      <FlatList
+      <FlashList
         data={listData}
         renderItem={renderItem}
-        keyExtractor={(item, i) => (item.type === 'note' ? item.note.id : `${item.type}-${i}`)}
+        keyExtractor={(item) => item.key}
         contentContainerStyle={{ paddingBottom: 120 }}
+        getItemType={(item) => item.type}
       />
+
+      {!detailNoteId && (
+        <MorphingFAB
+          isCapturing={captureVisible || voiceMode}
+          onTap={() => { voiceMode ? setVoiceMode(false) : setCaptureVisible(!captureVisible); }}
+          onLongPress={() => { setCaptureVisible(false); setVoiceMode(true); }}
+        />
+      )}
+
+      <VoiceInput visible={voiceMode && !detailNoteId} onClose={() => setVoiceMode(false)} onCreated={(id) => { setVoiceMode(false); setDetailNoteId(id); }} />
+
+      {captureVisible && !voiceMode && !detailNoteId && (
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.captureWrap} keyboardVerticalOffset={0}>
+          <QuickCapture visible={captureVisible} onClose={() => setCaptureVisible(false)} onOpenDetail={(id) => setDetailNoteId(id)} />
+        </KeyboardAvoidingView>
+      )}
+
+      <DetailSheet noteId={detailNoteId} onDismiss={() => setDetailNoteId(null)} />
+      <UndoToast />
+
+      <FolderDrawer visible={folderDrawerOpen} onClose={() => setFolderDrawerOpen(false)} />
+
+      {/* Multi-select floating bar */}
+      {multiSelectMode && selectedNotes.size > 0 && (
+        <View style={[styles.multiBar, { backgroundColor: c.bgElevated, borderColor: c.border }]}>
+          <Text style={[typography.label, { color: c.text, flex: 1 }]}>{selectedNotes.size} selected</Text>
+          <Pressable onPress={bulkDone} style={[styles.multiBtn, { backgroundColor: c.accent3 }]}>
+            <Ionicons name="checkmark" size={16} color="#000" />
+            <Text style={[{ fontSize: 12, fontWeight: '700', color: '#000' }]}>Done</Text>
+          </Pressable>
+          <Pressable onPress={bulkDelete} style={[styles.multiBtn, { backgroundColor: c.danger }]}>
+            <Ionicons name="trash" size={16} color="#fff" />
+            <Text style={[{ fontSize: 12, fontWeight: '700', color: '#fff' }]}>Delete</Text>
+          </Pressable>
+          <Pressable onPress={() => { setMultiSelectMode(false); setSelectedNotes(new Set()); }}>
+            <Ionicons name="close" size={20} color={c.textDim} />
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  greetingWrap: { paddingTop: 60, paddingBottom: 16 },
-  greetingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  greetingWrap: { paddingTop: 60, paddingBottom: 8 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logoText: { fontSize: 26, fontWeight: '900', letterSpacing: -1.5 },
   greetingActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   iconBtn: { width: 42, height: 42, borderRadius: 100, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
   sectionLabel: { paddingTop: 16, paddingBottom: 6 },
   doneCta: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 },
+  captureWrap: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 50 },
+  folderBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 100, borderWidth: 1, maxWidth: 120 },
+  // AI Banner
+  aiBanner: { marginHorizontal: 20, marginTop: 10, marginBottom: 14, padding: 14, borderRadius: radii.lg, borderWidth: 1, gap: 10, overflow: 'hidden', position: 'relative' },
+  aiBannerGlow: { position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50, opacity: 0.08 },
+  aiBannerText: { fontSize: 13, fontWeight: '600', lineHeight: 18, letterSpacing: -0.1 },
+  aiBannerIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  aiActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  aiActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: radii.full, borderWidth: 1 },
+  aiActionTitle: { fontSize: 11, fontWeight: '500', maxWidth: 100 },
+  aiActionLabel: { fontSize: 11, fontWeight: '700' },
+  // Multi-select
+  multiBar: { position: 'absolute', bottom: 100, left: 12, right: 12, borderRadius: radii.lg, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 60 },
+  multiBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.full },
+  selectBox: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
 });

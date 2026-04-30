@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Note, Context } from '@/src/models';
 import { createNote } from '@/src/models';
 import * as db from '@/src/services/database';
+import { suggestReminderForPriority, suggestPriorityFromDueDate } from '@/src/services/nl-parser';
 
 interface NoteState {
   notes: Note[];
@@ -15,6 +16,7 @@ interface NoteState {
   deleteNote: (id: string) => Promise<void>;
   restoreNote: (id: string) => Promise<void>;
   getNoteById: (id: string) => Note | undefined;
+  reorderNotes: (orderedIds: string[]) => Promise<void>;
 }
 
 export const useNoteStore = create<NoteState>((set, get) => ({
@@ -31,6 +33,18 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     const note = createNote(partial);
     await db.insertNote(note);
     set((s) => ({ notes: [note, ...s.notes] }));
+
+    // Auto-set reminder for every note — timing based on priority
+    try {
+      const reminderDate = suggestReminderForPriority(note.priority);
+      const d = db.getDb();
+      const remId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      await d.runAsync(
+        'INSERT INTO reminders (id, note_id, remind_at, status, ai_suggested, auto_set) VALUES (?, ?, ?, ?, ?, ?)',
+        [remId, note.id, reminderDate.toISOString(), 'pending', 1, 1]
+      );
+    } catch { /* reminder table might not exist yet */ }
+
     return note;
   },
 
@@ -47,6 +61,22 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     const updated = { ...note, isDone: !note.isDone, updatedAt: new Date().toISOString() };
     await db.updateNote(updated);
     set((s) => ({ notes: s.notes.map((n) => (n.id === id ? updated : n)) }));
+
+    // Auto-recreate recurring task when marked done
+    if (!note.isDone && note.recurrence) {
+      const nextNote = createNote({
+        title: note.title,
+        body: note.body,
+        context: note.context,
+        type: note.type,
+        priority: note.priority,
+        folderId: note.folderId,
+        color: note.color,
+        recurrence: note.recurrence,
+      });
+      await db.insertNote(nextNote);
+      set((s) => ({ notes: [nextNote, ...s.notes] }));
+    }
   },
 
   togglePin: async (id) => {
@@ -68,4 +98,15 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   getNoteById: (id) => get().notes.find((n) => n.id === id),
+
+  reorderNotes: async (orderedIds) => {
+    const updates = orderedIds.map((id, index) => ({ id, manualOrder: index }));
+    await db.updateManualOrder(updates);
+    set((s) => ({
+      notes: s.notes.map((n) => {
+        const idx = orderedIds.indexOf(n.id);
+        return idx >= 0 ? { ...n, manualOrder: idx } : n;
+      }),
+    }));
+  },
 }));

@@ -123,14 +123,17 @@ export async function initDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_checklist_note ON checklist_items(note_id);
   `);
 
-  // Create FTS5 table (separate try — might already exist)
+  // Create FTS5 table for full-text search
   try {
     await db.execAsync(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, body, content=notes, content_rowid=rowid);
+      CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, body, content='', content_rowid=rowid);
     `);
   } catch {
     // FTS table may already exist
   }
+
+  // Rebuild FTS index from existing notes
+  await rebuildFtsIndex();
 }
 
 export function getDb(): SQLite.SQLiteDatabase {
@@ -168,9 +171,14 @@ export async function insertNote(note: Note): Promise<void> {
       [item.id, note.id, item.text, item.isDone ? 1 : 0, item.sort]
     );
   }
+  // Sync FTS index
+  await ftsInsert(note.id, note.title, note.body);
 }
 
 export async function updateNote(note: Note): Promise<void> {
+  // Read old values for FTS delta
+  const old = await getDb().getFirstAsync<{ title: string; body: string }>('SELECT title, body FROM notes WHERE id = ?', [note.id]);
+
   const now = new Date().toISOString();
   await getDb().runAsync(
     `UPDATE notes SET title=?, body=?, folder_id=?, color=?, type=?, priority=?, manual_order=?, recurrence=?, images=?, is_pinned=?, is_done=?, updated_at=?, is_dirty=1
@@ -185,15 +193,22 @@ export async function updateNote(note: Note): Promise<void> {
       [item.id, note.id, item.text, item.isDone ? 1 : 0, item.sort]
     );
   }
+  // Sync FTS index
+  if (old) await ftsDelete(note.id, old.title, old.body);
+  await ftsInsert(note.id, note.title, note.body);
 }
 
 export async function softDeleteNote(id: string): Promise<void> {
+  const old = await getDb().getFirstAsync<{ title: string; body: string }>('SELECT title, body FROM notes WHERE id = ?', [id]);
   const now = new Date().toISOString();
   await getDb().runAsync('UPDATE notes SET deleted_at=?, is_dirty=1 WHERE id=?', [now, id]);
+  if (old) await ftsDelete(id, old.title, old.body);
 }
 
 export async function restoreNote(id: string): Promise<void> {
   await getDb().runAsync('UPDATE notes SET deleted_at=NULL, is_dirty=1 WHERE id=?', [id]);
+  const row = await getDb().getFirstAsync<{ title: string; body: string }>('SELECT title, body FROM notes WHERE id = ?', [id]);
+  if (row) await ftsInsert(id, row.title, row.body);
 }
 
 // ===== Folders =====
@@ -213,25 +228,114 @@ export async function insertFolder(folder: Folder): Promise<void> {
   );
 }
 
+export async function updateFolder(folder: Folder): Promise<void> {
+  await getDb().runAsync(
+    'UPDATE folders SET name=?, color=?, icon=?, parent_id=?, sort=?, updated_at=?, is_dirty=1 WHERE id=?',
+    [folder.name, folder.color, folder.icon, folder.parentId, folder.sort, new Date().toISOString(), folder.id]
+  );
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  // Unlink notes from this folder
+  await getDb().runAsync('UPDATE notes SET folder_id=NULL, is_dirty=1 WHERE folder_id=?', [id]);
+  await getDb().runAsync('DELETE FROM folders WHERE id=?', [id]);
+}
+
+// ===== FTS Sync =====
+
+async function ftsInsert(id: string, title: string, body: string): Promise<void> {
+  const rowid = await getRowidForNote(id);
+  if (rowid === null) return;
+  try {
+    await getDb().runAsync(
+      'INSERT INTO notes_fts(rowid, title, body) VALUES (?, ?, ?)',
+      [rowid, title, body]
+    );
+  } catch {
+    // Ignore duplicate insert
+  }
+}
+
+async function ftsDelete(id: string, oldTitle: string, oldBody: string): Promise<void> {
+  const rowid = await getRowidForNote(id);
+  if (rowid === null) return;
+  try {
+    await getDb().runAsync(
+      "INSERT INTO notes_fts(notes_fts, rowid, title, body) VALUES ('delete', ?, ?, ?)",
+      [rowid, oldTitle, oldBody]
+    );
+  } catch {
+    // Ignore if not in index
+  }
+}
+
+async function getRowidForNote(id: string): Promise<number | null> {
+  const row = await getDb().getFirstAsync<{ rowid: number }>('SELECT rowid FROM notes WHERE id = ?', [id]);
+  return row ? row.rowid : null;
+}
+
+async function rebuildFtsIndex(): Promise<void> {
+  try {
+    await getDb().execAsync("DELETE FROM notes_fts");
+    await getDb().execAsync(
+      "INSERT INTO notes_fts(rowid, title, body) SELECT rowid, title, body FROM notes WHERE deleted_at IS NULL"
+    );
+  } catch {
+    // FTS rebuild failed — search will fall back to LIKE
+  }
+}
+
 // ===== Search =====
 
 export async function searchNotes(query: string, context?: string): Promise<Note[]> {
   const q = query.trim();
   if (!q) return [];
-  // Simple LIKE search (FTS5 as future optimization)
-  const rows = await getDb().getAllAsync<any>(
-    `SELECT * FROM notes WHERE deleted_at IS NULL AND (title LIKE ? OR body LIKE ?)${context ? ' AND context = ?' : ''} ORDER BY updated_at DESC LIMIT 50`,
-    context ? [`%${q}%`, `%${q}%`, context] : [`%${q}%`, `%${q}%`]
-  );
+
+  // Try FTS5 first, fall back to LIKE
+  let rows: any[];
+  try {
+    const ftsQuery = q.split(/\s+/).map(w => `"${w}"*`).join(' ');
+    rows = await getDb().getAllAsync<any>(
+      `SELECT n.*, snippet(notes_fts, 0, '<<', '>>', '...', 32) AS title_snippet, snippet(notes_fts, 1, '<<', '>>', '...', 48) AS body_snippet
+       FROM notes_fts fts
+       JOIN notes n ON n.rowid = fts.rowid
+       WHERE notes_fts MATCH ? AND n.deleted_at IS NULL${context ? ' AND n.context = ?' : ''}
+       ORDER BY rank
+       LIMIT 50`,
+      context ? [ftsQuery, context] : [ftsQuery]
+    );
+  } catch {
+    // FTS failed — fall back to LIKE
+    rows = await getDb().getAllAsync<any>(
+      `SELECT *, NULL AS title_snippet, NULL AS body_snippet FROM notes WHERE deleted_at IS NULL AND (title LIKE ? OR body LIKE ?)${context ? ' AND context = ?' : ''} ORDER BY updated_at DESC LIMIT 50`,
+      context ? [`%${q}%`, `%${q}%`, context] : [`%${q}%`, `%${q}%`]
+    );
+  }
+
   const notes: Note[] = [];
   for (const row of rows) {
     const items = await getDb().getAllAsync<any>(
       'SELECT * FROM checklist_items WHERE note_id = ? ORDER BY sort',
       [row.id]
     );
-    notes.push(rowToNote(row, items));
+    const note = rowToNote(row, items);
+    // Attach snippets for highlighting
+    (note as any)._titleSnippet = row.title_snippet;
+    (note as any)._bodySnippet = row.body_snippet;
+    notes.push(note);
   }
   return notes;
+}
+
+// ===== Reorder =====
+
+export async function updateManualOrder(updates: { id: string; manualOrder: number }[]): Promise<void> {
+  for (const { id, manualOrder } of updates) {
+    await getDb().runAsync(
+      'UPDATE notes SET manual_order = ?, is_dirty = 1 WHERE id = ?',
+      [manualOrder, id]
+    );
+  }
 }
 
 // ===== Helpers =====

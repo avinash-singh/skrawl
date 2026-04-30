@@ -160,6 +160,25 @@ export async function insertFolder(folder: Folder): Promise<void> {
   });
 }
 
+export async function updateFolder(folder: Folder): Promise<void> {
+  const idx = folders.findIndex((f: any) => f.id === folder.id);
+  if (idx >= 0) {
+    folders[idx] = { ...folders[idx], name: folder.name, color: folder.color, icon: folder.icon, parent_id: folder.parentId, sort: folder.sort, updated_at: new Date().toISOString() };
+  }
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  notes.forEach((n: any) => { if (n.folder_id === id) n.folder_id = null; });
+  folders = folders.filter((f: any) => f.id !== id);
+}
+
+export async function updateManualOrder(updates: { id: string; manualOrder: number }[]): Promise<void> {
+  for (const { id, manualOrder } of updates) {
+    const n = notes.find((x: any) => x.id === id);
+    if (n) n.manual_order = manualOrder;
+  }
+}
+
 export async function searchNotes(query: string, context?: string): Promise<Note[]> {
   return getAllNotes(context || 'personal');
 }
