@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, Modal, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore } from '@/src/store/ui-store';
 import { useFolderStore } from '@/src/store/folder-store';
@@ -268,7 +268,11 @@ export function FolderDrawer({ visible, onClose }: Props) {
 
         {/* Folder editor overlay */}
         {showEditor && (
-          <View style={[styles.editorOverlay, { backgroundColor: c.overlay }]}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={[styles.editorOverlay, { backgroundColor: c.overlay }]}
+          >
+            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }} keyboardShouldPersistTaps="handled">
             <View style={[styles.editor, { backgroundColor: c.bgElevated, borderColor: c.border }]}>
               <Text style={[typography.label, { color: c.text, marginBottom: 12 }]}>
                 {editingFolder ? 'Edit Folder' : 'New Folder'}
@@ -352,7 +356,8 @@ export function FolderDrawer({ visible, onClose }: Props) {
                 </Pressable>
               </View>
             </View>
-          </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         )}
       </View>
     </Modal>
@@ -434,9 +439,6 @@ const styles = StyleSheet.create({
   },
   editorOverlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   editor: {
     width: '100%',

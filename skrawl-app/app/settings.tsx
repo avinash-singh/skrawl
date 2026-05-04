@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import { useThemeColors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore, type SwipeAction, type ReminderIntensity } from '@/src/store/ui-store';
 import { useSyncStore } from '@/src/store/sync-store';
-import { setApiKey as saveApiKey, getApiKey, isConfigured as isAiConfigured, openAnthropicAuth, openAnthropicSignup, verifyApiKey, clearApiKey as clearAiKey } from '@/src/services/ai-service';
+import * as WebBrowser from 'expo-web-browser';
+import { setApiKey as saveApiKey, getApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey } from '@/src/services/ai-service';
 import type { NoteType } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -339,25 +340,27 @@ export default function SettingsScreen() {
           {/* Connection options — shown when not connected */}
           {!aiConnected && (
             <>
-              {/* Option 1: Sign in with Anthropic (SSO/OAuth) */}
+              {/* Option 1: Get API Key */}
               <Pressable
                 style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
                 onPress={async () => {
-                  await openAnthropicAuth();
-                  // After browser returns, prompt for the key
+                  await WebBrowser.openBrowserAsync(
+                    'https://console.anthropic.com/settings/keys',
+                    { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN }
+                  );
                   setAuthMode('key');
                   setEditingToken(true);
                 }}
               >
-                <View style={[styles.rowIcon, { backgroundColor: '#D97706' }]}><Ionicons name="log-in-outline" size={16} color="#fff" /></View>
+                <View style={[styles.rowIcon, { backgroundColor: '#D97706' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[typography.body, { color: c.text }]}>Sign in with Anthropic</Text>
-                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>SSO / Google / Email — opens browser</Text>
+                  <Text style={[typography.body, { color: c.text }]}>Get API Key</Text>
+                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>Sign up free at anthropic.com ($5 credit)</Text>
                 </View>
                 <Ionicons name="open-outline" size={16} color={c.textMuted} />
               </Pressable>
 
-              {/* Option 2: Paste API Key directly */}
+              {/* Option 2: Paste API Key */}
               <Pressable
                 style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
                 onPress={() => { setAuthMode('key'); setEditingToken(true); }}
@@ -370,18 +373,15 @@ export default function SettingsScreen() {
                 <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
               </Pressable>
 
-              {/* Option 3: Sign up (new users) */}
-              <Pressable
-                style={[styles.row, { borderBottomColor: c.border }]}
-                onPress={() => openAnthropicSignup()}
-              >
-                <View style={[styles.rowIcon, { backgroundColor: '#6AFFCB' }]}><Ionicons name="person-add-outline" size={16} color="#fff" /></View>
+              {/* Info: what works without Claude */}
+              <View style={[styles.row, { borderBottomColor: c.border }]}>
+                <View style={[styles.rowIcon, { backgroundColor: '#6AFFCB' }]}><Ionicons name="information-circle-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[typography.body, { color: c.text }]}>Create Anthropic Account</Text>
-                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>Free — $5 credit included</Text>
+                  <Text style={[{ fontSize: 12, color: c.textDim, lineHeight: 18 }]}>
+                    Works without sign-in: NL parsing, auto-reminders, auto-priority, nudges. Sign in adds: smart categorization, AI titles.
+                  </Text>
                 </View>
-                <Ionicons name="open-outline" size={16} color={c.textMuted} />
-              </Pressable>
+              </View>
             </>
           )}
 
@@ -586,7 +586,7 @@ export default function SettingsScreen() {
         </Group>
 
         <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.0.0</Text>
+          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.0.1</Text>
         </View>
       </ScrollView>
     </View>

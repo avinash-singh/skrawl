@@ -66,6 +66,7 @@ export default function HomeScreen() {
   const [reorderMode, setReorderMode] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [aiBannerExpanded, setAiBannerExpanded] = useState(false);
 
   const updateNote = useNoteStore((s) => s.updateNote);
   const getNoteById = useNoteStore((s) => s.getNoteById);
@@ -109,10 +110,14 @@ export default function HomeScreen() {
 
   // AI insight — smart, contextual, interactive
   const aiInsight = useMemo(() => {
-    const active = notes.filter((n) => !n.isDone);
+    // Only use notes in the current context that aren't deleted
+    const noteIds = new Set(notes.map((n) => n.id));
+    const active = notes.filter((n) => !n.isDone && !n.deletedAt);
     const p0s = active.filter((n) => n.priority === 0);
     const p1s = active.filter((n) => n.priority === 1);
-    const overdue = reminders.filter((r) => new Date(r.remindAt) < new Date());
+    // Only use reminders that belong to notes in the current context
+    const contextReminders = reminders.filter((r) => noteIds.has(r.noteId));
+    const overdue = contextReminders.filter((r) => new Date(r.remindAt) < new Date());
     const noPriority = active.filter((n) => n.priority === null);
     const stale = active.filter((n) => {
       const age = Date.now() - new Date(n.updatedAt).getTime();
@@ -134,7 +139,7 @@ export default function HomeScreen() {
     // Due soon — suggest upgrading to P0
     const now = new Date();
     const twoDays = 2 * 24 * 60 * 60 * 1000;
-    const dueSoon = reminders
+    const dueSoon = contextReminders
       .filter((r) => {
         const remindTime = new Date(r.remindAt).getTime();
         const delta = remindTime - now.getTime();
@@ -221,7 +226,20 @@ export default function HomeScreen() {
       };
     }
 
-    // All clear
+    // Active items but no special conditions
+    if (active.length > 0) {
+      const top = active[0];
+      return {
+        type: 'focus' as const,
+        icon: 'list-outline' as const,
+        iconColor: c.accent,
+        text: `${active.length} item${active.length > 1 ? 's' : ''} — "${top.title}" is next`,
+        subtext: 'Tap to see your notes',
+        actions: [{ id: top.id, title: 'Open', label: 'Start' }],
+      };
+    }
+
+    // Truly all clear
     return {
       type: 'clear' as const,
       icon: 'checkmark-circle-outline' as const,
@@ -363,10 +381,28 @@ export default function HomeScreen() {
           </View>
         );
 
-      case 'ai-banner':
+      case 'ai-banner': {
+        // Collect the relevant notes for this insight
+        const insightNotes: Note[] = (() => {
+          const active = notes.filter((n) => !n.isDone && !n.deletedAt);
+          const noteIds = new Set(notes.map((n) => n.id));
+          const ctxReminders = reminders.filter((r) => noteIds.has(r.noteId));
+          switch (aiInsight.type) {
+            case 'p0-overload': return active.filter((n) => n.priority === 0);
+            case 'overdue': return ctxReminders.filter((r) => new Date(r.remindAt) < new Date()).map((r) => notes.find((n) => n.id === r.noteId)).filter(Boolean) as Note[];
+            case 'due-soon': return aiInsight.actions.map((a) => getNoteById(a.id)).filter(Boolean) as Note[];
+            case 'unorganized': return active.filter((n) => n.priority === null).slice(0, 5);
+            case 'stale': return active.filter((n) => Date.now() - new Date(n.updatedAt).getTime() > 3 * 24 * 60 * 60 * 1000).slice(0, 5);
+            case 'focus': return active.filter((n) => n.priority !== null && n.priority <= 1).slice(0, 3);
+            default: return [];
+          }
+        })();
+
         return (
-          <View style={[styles.aiBanner, { backgroundColor: `${aiInsight.iconColor}12`, borderColor: `${aiInsight.iconColor}25` }]}>
-            {/* Glow accent */}
+          <Pressable
+            style={[styles.aiBanner, { backgroundColor: `${aiInsight.iconColor}12`, borderColor: `${aiInsight.iconColor}25` }]}
+            onPress={() => insightNotes.length > 0 && setAiBannerExpanded(!aiBannerExpanded)}
+          >
             <View style={[styles.aiBannerGlow, { backgroundColor: aiInsight.iconColor }]} />
             {/* Header row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 1 }}>
@@ -377,54 +413,50 @@ export default function HomeScreen() {
                 <Text style={[styles.aiBannerText, { color: c.text }]} numberOfLines={2}>{aiInsight.text}</Text>
                 <Text style={[{ fontSize: 11, color: c.textDim, marginTop: 2 }]}>{aiInsight.subtext}</Text>
               </View>
+              {insightNotes.length > 0 && (
+                <Ionicons name={aiBannerExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={c.textMuted} />
+              )}
             </View>
-            {/* Action buttons */}
-            {aiInsight.actions.length > 0 && (
-              <View style={[styles.aiActions, { zIndex: 1 }]}>
-                {aiInsight.actions.map((action, i) => (
-                  <Pressable
-                    key={`${action.id}-${i}`}
-                    style={[styles.aiActionBtn, { borderColor: `${aiInsight.iconColor}50`, backgroundColor: `${aiInsight.iconColor}18` }]}
-                    onPress={() => {
-                      if (aiInsight.type === 'p0-overload') {
-                        const note = getNoteById(action.id);
-                        if (note) updateNote({ ...note, priority: 1 });
-                      } else if (aiInsight.type === 'due-soon' && action.label === 'Upgrade to P0') {
-                        const note = getNoteById(action.id);
-                        if (note) updateNote({ ...note, priority: 0 });
-                      } else if (aiInsight.type === 'overdue' && action.label === 'Done') {
-                        toggleDone(action.id);
-                        onNoteCompleted(vibeValue);
-                      } else if (aiInsight.type === 'overdue' && action.label === 'Tomorrow') {
-                        // Reschedule reminder to tomorrow 9am
-                        const r = reminders.find((rem) => rem.noteId === action.id);
-                        if (r) {
-                          const tomorrow = new Date();
-                          tomorrow.setDate(tomorrow.getDate() + 1);
-                          tomorrow.setHours(9, 0, 0, 0);
-                          // Dismiss old, nudge store handles feedback
-                        }
-                        setDetailNoteId(action.id);
-                      } else if (aiInsight.type === 'stale' && action.label === 'Archive') {
-                        deleteNote(action.id);
-                        onNoteDeleted(vibeValue);
-                      } else if (aiInsight.type === 'unorganized') {
-                        setDetailNoteId(action.id);
-                      } else {
-                        setDetailNoteId(action.id);
-                      }
-                    }}
-                  >
-                    {(aiInsight.type === 'p0-overload' || (aiInsight.type === 'due-soon' && action.title)) && (
-                      <Text style={[styles.aiActionTitle, { color: c.textDim }]} numberOfLines={1}>{action.title}</Text>
+
+            {/* Expanded — show relevant notes with quick actions */}
+            {aiBannerExpanded && insightNotes.length > 0 && (
+              <View style={[styles.aiExpanded, { borderTopColor: `${aiInsight.iconColor}20`, zIndex: 1 }]}>
+                {insightNotes.map((note) => (
+                  <View key={note.id} style={[styles.aiNoteRow, { borderColor: c.border }]}>
+                    <Pressable style={{ flex: 1 }} onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}>
+                      <Text style={[{ fontSize: 13, fontWeight: '600', color: c.text }]} numberOfLines={1}>{note.title || 'Untitled'}</Text>
+                      {note.priority !== null && (
+                        <Text style={[{ fontSize: 10, color: colors.priority[note.priority], fontWeight: '700' }]}>P{note.priority}</Text>
+                      )}
+                    </Pressable>
+                    {/* Quick actions based on insight type */}
+                    {aiInsight.type === 'p0-overload' && (
+                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${aiInsight.iconColor}40` }]} onPress={() => { const n = getNoteById(note.id); if (n) updateNote({ ...n, priority: 1 }); }}>
+                        <Text style={[{ fontSize: 10, fontWeight: '700', color: aiInsight.iconColor }]}>→ P1</Text>
+                      </Pressable>
                     )}
-                    <Text style={[styles.aiActionLabel, { color: aiInsight.iconColor }]}>{action.label}</Text>
-                  </Pressable>
+                    {aiInsight.type === 'overdue' && (
+                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${c.accent3}40` }]} onPress={() => { toggleDone(note.id); onNoteCompleted(vibeValue); }}>
+                        <Ionicons name="checkmark" size={12} color={c.accent3} />
+                      </Pressable>
+                    )}
+                    {aiInsight.type === 'stale' && (
+                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${c.danger}40` }]} onPress={() => { deleteNote(note.id); onNoteDeleted(vibeValue); }}>
+                        <Ionicons name="archive-outline" size={12} color={c.danger} />
+                      </Pressable>
+                    )}
+                    {(aiInsight.type === 'unorganized' || aiInsight.type === 'focus' || aiInsight.type === 'due-soon') && (
+                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${aiInsight.iconColor}40` }]} onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}>
+                        <Ionicons name="open-outline" size={12} color={aiInsight.iconColor} />
+                      </Pressable>
+                    )}
+                  </View>
                 ))}
               </View>
             )}
-          </View>
+          </Pressable>
         );
+      }
 
       case 'header':
         return (
@@ -504,6 +536,7 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.key}
         contentContainerStyle={{ paddingBottom: 120 }}
         getItemType={(item) => item.type}
+        extraData={`${aiInsight.type}-${aiInsight.text}-${notes.length}`}
       />
 
       {!detailNoteId && (
@@ -565,10 +598,9 @@ const styles = StyleSheet.create({
   aiBannerGlow: { position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50, opacity: 0.08 },
   aiBannerText: { fontSize: 13, fontWeight: '600', lineHeight: 18, letterSpacing: -0.1 },
   aiBannerIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  aiActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-  aiActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: radii.full, borderWidth: 1 },
-  aiActionTitle: { fontSize: 11, fontWeight: '500', maxWidth: 100 },
-  aiActionLabel: { fontSize: 11, fontWeight: '700' },
+  aiExpanded: { borderTopWidth: 1, paddingTop: 10, marginTop: 8, gap: 6 },
+  aiNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: StyleSheet.hairlineWidth },
+  aiQuickBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.full, borderWidth: 1 },
   // Multi-select
   multiBar: { position: 'absolute', bottom: 100, left: 12, right: 12, borderRadius: radii.lg, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 60 },
   multiBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.full },

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform, Share } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform, Share, Modal } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
 import { useNoteStore } from '@/src/store/note-store';
@@ -436,9 +437,8 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
   const reminders = useReminderStore((s) => s.reminders);
   const addReminder = useReminderStore((s) => s.addReminder);
   const dismissReminder = useReminderStore((s) => s.dismissReminder);
-  const [customDate, setCustomDate] = useState('');
-  const [customTime, setCustomTime] = useState('');
-  const [showCustom, setShowCustom] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
 
   const noteReminders = noteId ? reminders.filter((r) => r.noteId === noteId) : [];
 
@@ -451,7 +451,6 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
 
   const handleSetReminder = async (date: Date) => {
     if (!noteId) return;
-    // Dismiss existing reminder first (update = replace)
     for (const r of noteReminders) {
       await dismissReminder(r.id);
     }
@@ -466,37 +465,34 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
       createdAt: new Date().toISOString(),
       isDirty: true,
     });
-    setShowCustom(false);
-
-    // Auto-suggest priority based on due date
+    setShowPicker(false);
     const suggestedPri = suggestPriorityFromDueDate(date);
     if (priority === null || suggestedPri < priority) {
       onPriorityChange(suggestedPri);
     }
   };
 
-  const handleCustomSubmit = () => {
-    // Parse "YYYY-MM-DD" and "HH:MM"
-    const dateStr = customDate.trim() || new Date().toISOString().split('T')[0];
-    const timeStr = customTime.trim() || '09:00';
-    const parsed = new Date(`${dateStr}T${timeStr}:00`);
-    if (!isNaN(parsed.getTime())) {
-      handleSetReminder(parsed);
-    }
+  const openPicker = (initialDate?: Date) => {
+    setPickerDate(initialDate || new Date());
+    setShowPicker(true);
   };
 
   return (
     <View style={styles.section}>
       <Text style={[typography.tiny, { color: c.textMuted, marginBottom: 8 }]}>REMINDER</Text>
 
-      {/* Active reminder */}
+      {/* Active reminder — tappable to edit */}
       {noteReminders.length > 0 && (
-        <View style={[reminderStyles.activeBar, { borderColor: c.accent, backgroundColor: c.accentGlow, marginBottom: 8 }]}>
+        <Pressable
+          style={[reminderStyles.activeBar, { borderColor: c.accent, backgroundColor: c.accentGlow, marginBottom: 8 }]}
+          onPress={() => openPicker(new Date(noteReminders[0].remindAt))}
+        >
           <Ionicons name="alarm" size={16} color={c.accent} />
           <View style={{ flex: 1 }}>
             <Text style={[{ fontSize: 13, fontWeight: '600', color: c.text }]}>
-              {new Date(noteReminders[0].remindAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+              {new Date(noteReminders[0].remindAt).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </Text>
+            <Text style={[{ fontSize: 10, color: c.textDim }]}>Tap to change</Text>
           </View>
           {noteReminders[0].aiSuggested && (
             <View style={[reminderStyles.aiChip, { backgroundColor: c.bgCard }]}>
@@ -506,10 +502,10 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
           <Pressable onPress={() => dismissReminder(noteReminders[0].id)} hitSlop={8}>
             <Ionicons name="close-circle" size={18} color={c.textMuted} />
           </Pressable>
-        </View>
+        </Pressable>
       )}
 
-      {/* Preset buttons — always visible for set/update */}
+      {/* Preset buttons */}
       <View style={reminderStyles.presetRow}>
         {presets.map((p) => (
           <Pressable
@@ -517,46 +513,43 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
             style={[reminderStyles.presetBtn, { borderColor: c.border, backgroundColor: c.bgCard }]}
             onPress={() => handleSetReminder(p.getDate())}
           >
-            <Ionicons name="alarm-outline" size={12} color={c.textDim} />
             <Text style={[{ fontSize: 12, fontWeight: '500', color: c.textDim }]}>{p.label}</Text>
           </Pressable>
         ))}
         <Pressable
-          style={[reminderStyles.presetBtn, { borderColor: showCustom ? c.accent : c.border, backgroundColor: showCustom ? c.accentGlow : c.bgCard }]}
-          onPress={() => setShowCustom(!showCustom)}
+          style={[reminderStyles.presetBtn, { borderColor: c.accent, backgroundColor: c.accentGlow }]}
+          onPress={() => openPicker()}
         >
-          <Ionicons name="calendar-outline" size={12} color={showCustom ? c.accent : c.textDim} />
-          <Text style={[{ fontSize: 12, fontWeight: '500', color: showCustom ? c.accent : c.textDim }]}>Custom</Text>
+          <Ionicons name="calendar-outline" size={12} color={c.accent} />
+          <Text style={[{ fontSize: 12, fontWeight: '500', color: c.accent }]}>Pick</Text>
         </Pressable>
       </View>
 
-      {/* Custom date/time input */}
-      {showCustom && (
-        <View style={[reminderStyles.customRow, { marginTop: 8 }]}>
-          <TextInput
-            style={[reminderStyles.customInput, { color: c.text, borderColor: c.border, backgroundColor: c.bgInput }]}
-            value={customDate}
-            onChangeText={setCustomDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={c.textMuted}
-            keyboardType="numbers-and-punctuation"
-          />
-          <TextInput
-            style={[reminderStyles.customInput, { color: c.text, borderColor: c.border, backgroundColor: c.bgInput, width: 80 }]}
-            value={customTime}
-            onChangeText={setCustomTime}
-            placeholder="HH:MM"
-            placeholderTextColor={c.textMuted}
-            keyboardType="numbers-and-punctuation"
-          />
-          <Pressable
-            style={[reminderStyles.customSetBtn, { backgroundColor: c.accent }]}
-            onPress={handleCustomSubmit}
-          >
-            <Text style={[{ fontSize: 12, fontWeight: '700', color: '#fff' }]}>Set</Text>
-          </Pressable>
+      {/* Native date/time picker — rendered as Modal overlay */}
+      <Modal visible={showPicker} transparent animationType="slide">
+        <View style={reminderStyles.pickerOverlay}>
+          <View style={[reminderStyles.pickerSheet, { backgroundColor: c.bgElevated }]}>
+            <View style={reminderStyles.pickerHeader}>
+              <Pressable onPress={() => setShowPicker(false)}>
+                <Text style={[{ fontSize: 16, fontWeight: '600', color: c.textDim }]}>Cancel</Text>
+              </Pressable>
+              <Text style={[{ fontSize: 16, fontWeight: '700', color: c.text }]}>Set Reminder</Text>
+              <Pressable onPress={() => handleSetReminder(pickerDate)}>
+                <Text style={[{ fontSize: 16, fontWeight: '600', color: c.accent }]}>Done</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={pickerDate}
+              mode="datetime"
+              display="spinner"
+              themeVariant="dark"
+              minimumDate={new Date()}
+              onChange={(_, date) => { if (date) setPickerDate(date); }}
+              style={{ height: 200 }}
+            />
+          </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
@@ -589,23 +582,24 @@ const reminderStyles = StyleSheet.create({
     borderRadius: radii.full,
     borderWidth: 1,
   },
-  customRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  customInput: {
+  pickerOverlay: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: radii.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  customSetBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radii.full,
+  pickerSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
 });
 

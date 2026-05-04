@@ -15,7 +15,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.skrawl-app"
+      "bundleIdentifier": "com.avinash.skrawl",
+      "runtimeVersion": "1.0.0",
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0C0C0F"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +29,10 @@
         "backgroundColor": "#0C0C0F"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -33,10 +42,21 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "688d4039-5596-48d5-af4f-06342bc69804"
+      }
+    },
+    "owner": "avinash-singh-122",
+    "updates": {
+      "url": "https://u.expo.dev/688d4039-5596-48d5-af4f-06342bc69804"
     }
   }
 }

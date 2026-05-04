@@ -83,20 +83,71 @@ export function parseNaturalLanguage(input: string): ParsedInput {
     }
   }
 
-  // Extract date/time with chrono-node
-  const parsed = chrono.parse(text);
+  // Custom date patterns chrono might miss
+  const customDatePatterns: { pattern: RegExp; getDate: () => Date }[] = [
+    { pattern: /\bby\s+(?:this\s+)?weekend\b/i, getDate: () => {
+      const d = new Date(); const day = d.getDay();
+      d.setDate(d.getDate() + (6 - day)); d.setHours(12, 0, 0, 0); return d;
+    }},
+    { pattern: /\bby\s+eod\b|\bby\s+end\s+of\s+day\b/i, getDate: () => {
+      const d = new Date(); d.setHours(17, 0, 0, 0); return d;
+    }},
+    { pattern: /\bby\s+eow\b|\bby\s+end\s+of\s+week\b/i, getDate: () => {
+      const d = new Date(); d.setDate(d.getDate() + (5 - d.getDay())); d.setHours(17, 0, 0, 0); return d;
+    }},
+    { pattern: /\bsecond\s+half\s+(?:of\s+)?today\b/i, getDate: () => {
+      const d = new Date(); d.setHours(14, 0, 0, 0); return d;
+    }},
+    { pattern: /\bsecond\s+half\s+(?:of\s+)?tomorrow\b/i, getDate: () => {
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(14, 0, 0, 0); return d;
+    }},
+    { pattern: /\bfirst\s+half\s+(?:of\s+)?tomorrow\b/i, getDate: () => {
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d;
+    }},
+    { pattern: /\bthis\s+evening\b|\btonight\b/i, getDate: () => {
+      const d = new Date(); d.setHours(19, 0, 0, 0); return d;
+    }},
+    { pattern: /\bthis\s+afternoon\b/i, getDate: () => {
+      const d = new Date(); d.setHours(14, 0, 0, 0); return d;
+    }},
+  ];
+
+  // Try custom patterns first
   let reminderDate: Date | null = null;
-  if (parsed.length > 0) {
-    reminderDate = parsed[0].start.date();
-    // Remove the date text from the title
-    text = text.replace(parsed[0].text, '').trim();
+  let dateMatchText = '';
+  for (const { pattern, getDate } of customDatePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      reminderDate = getDate();
+      dateMatchText = match[0];
+      text = text.replace(match[0], '').trim();
+      break;
+    }
   }
 
-  // Clean up title
+  // Fall back to chrono-node — forwardDate ensures future dates
+  if (!reminderDate) {
+    const parsed = chrono.parse(text, new Date(), { forwardDate: true });
+    if (parsed.length > 0) {
+      reminderDate = parsed[0].start.date();
+      dateMatchText = parsed[0].text;
+      // Remove the date text AND the preposition before it (by, on, at, before, until)
+      const fullPattern = new RegExp(`\\b(?:by|on|at|before|until|due|for)\\s+${dateMatchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+      const fullMatch = text.match(fullPattern);
+      if (fullMatch) {
+        text = text.replace(fullMatch[0], '').trim();
+      } else {
+        text = text.replace(dateMatchText, '').trim();
+      }
+    }
+  }
+
+  // Clean up title — remove trailing prepositions, punctuation, extra spaces
   const title = text
     .replace(/\s+/g, ' ')
     .replace(/^[-–—]\s*/, '')
     .replace(/\s*[-–—]$/, '')
+    .replace(/\s+(?:by|on|at|before|until|due|for)\s*$/i, '') // trailing preposition
     .trim();
 
   return {
