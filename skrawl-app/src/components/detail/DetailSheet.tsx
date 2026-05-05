@@ -12,6 +12,7 @@ import { useReminderStore } from '@/src/store/reminder-store';
 import { useNudgeStore } from '@/src/store/nudge-store';
 import { useUIStore } from '@/src/store/ui-store';
 import { autoTitle, suggestReminderForPriority, suggestPriorityFromDueDate } from '@/src/services/nl-parser';
+import { isConfigured as isAiConfigured, processVoiceInput } from '@/src/services/ai-service';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface Props {
@@ -23,7 +24,6 @@ const priorityOptions: { value: PriorityLevel; label: string }[] = [
   { value: 0, label: 'P0' },
   { value: 1, label: 'P1' },
   { value: 2, label: 'P2' },
-  { value: 3, label: 'P3' },
 ];
 
 export function DetailSheet({ noteId, onDismiss }: Props) {
@@ -141,8 +141,12 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: c.bgElevated }}
       handleIndicatorStyle={{ backgroundColor: c.textMuted, width: 40 }}
+      keyboardBehavior="extend"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+      enableDynamicSizing={false}
     >
-      <BottomSheetScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <BottomSheetScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
         {/* Title with auto-suggest ghost text */}
         <View>
           <TextInput
@@ -263,13 +267,6 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
               {noteImages.length > 0 ? `${noteImages.length} image${noteImages.length > 1 ? 's' : ''}` : 'Image'}
             </Text>
           </Pressable>
-          <Pressable
-            style={[styles.quickActionBtn, { borderColor: micActive ? c.accent : c.border }, micActive && { backgroundColor: c.accentGlow }]}
-            onPress={() => setMicActive(!micActive)}
-          >
-            <Ionicons name="mic-outline" size={14} color={micActive ? c.accent : c.textDim} />
-            <Text style={[{ fontSize: 12, fontWeight: '600', color: micActive ? c.accent : c.textDim }]}>Voice</Text>
-          </Pressable>
         </View>
 
         {/* Mic input — type what you'd say, AI processes it */}
@@ -296,11 +293,23 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
                 <Text style={[{ fontSize: 13, fontWeight: '600', color: c.textDim }]}>Cancel</Text>
               </Pressable>
               <Pressable
-                onPress={() => {
-                  // Process mic input — append to body or parse as instruction
+                onPress={async () => {
                   const input = micText.trim();
-                  if (input) {
-                    // Simple: append to body. With AI key, this would call Claude to interpret.
+                  if (!input) return;
+
+                  if (isAiConfigured()) {
+                    // Use OpenAI to intelligently process the command
+                    const updates = await processVoiceInput(input, { title, body, priority }, vibeValue);
+                    if (updates) {
+                      if (updates.title !== undefined) setTitle(updates.title);
+                      if (updates.body !== undefined) setBody(updates.body);
+                      if (updates.priority !== undefined) setPriority(updates.priority as any);
+                    } else {
+                      // AI failed — fall back to simple append
+                      setBody((prev) => prev ? `${prev}\n${input}` : input);
+                    }
+                  } else {
+                    // No AI key — use simple pattern matching
                     if (input.toLowerCase().startsWith('title:') || input.toLowerCase().startsWith('set title')) {
                       setTitle(input.replace(/^(title:|set title)\s*/i, ''));
                     } else if (input.toLowerCase().startsWith('priority') || input.match(/^p[0-3]/i)) {
@@ -331,20 +340,28 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
         {/* Body (note/task) */}
         {(noteType === 'note' || noteType === 'task') && (
           <View style={styles.section}>
-            <TextInput
-              style={[typography.body, styles.bodyInput, { color: c.text, borderColor: c.border }]}
-              value={body}
-              onChangeText={(text) => {
-                setBody(text);
-                // Detect slash command
-                if (text.endsWith('/')) setShowSlashMenu(true);
-                else if (showSlashMenu && !text.includes('/')) setShowSlashMenu(false);
-              }}
-              placeholder="Add notes... (type / for commands)"
-              placeholderTextColor={c.textMuted}
-              multiline
-              textAlignVertical="top"
-            />
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={[typography.body, styles.bodyInput, { color: c.text, borderColor: c.border, paddingRight: 44 }]}
+                value={body}
+                onChangeText={(text) => {
+                  setBody(text);
+                  if (text.endsWith('/')) setShowSlashMenu(true);
+                  else if (showSlashMenu && !text.includes('/')) setShowSlashMenu(false);
+                }}
+                placeholder="Add notes... (type / for commands)"
+                placeholderTextColor={c.textMuted}
+                multiline
+                textAlignVertical="top"
+              />
+              {/* Floating mic button */}
+              <Pressable
+                style={[styles.floatingMic, { backgroundColor: micActive ? c.accent : c.bgCard, borderColor: micActive ? c.accent : c.border }]}
+                onPress={() => setMicActive(!micActive)}
+              >
+                <Ionicons name="mic" size={16} color={micActive ? '#fff' : c.textDim} />
+              </Pressable>
+            </View>
             {/* Slash command menu */}
             {showSlashMenu && (
               <View style={[styles.slashMenu, { backgroundColor: c.bgElevated, borderColor: c.border }]}>
@@ -442,11 +459,20 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
 
   const noteReminders = noteId ? reminders.filter((r) => r.noteId === noteId) : [];
 
-  const presets = [
+  // Presets — relative to existing reminder date or priority
+  const baseDate = noteReminders.length > 0 ? new Date(noteReminders[0].remindAt) : new Date();
+  const presets = priority === 0 ? [
+    { label: '+2h', getDate: () => new Date(baseDate.getTime() + 2 * 60 * 60 * 1000) },
+    { label: '+12h', getDate: () => new Date(baseDate.getTime() + 12 * 60 * 60 * 1000) },
+    { label: '+1 day', getDate: () => new Date(baseDate.getTime() + 24 * 60 * 60 * 1000) },
+  ] : priority === 1 ? [
+    { label: '+1 day', getDate: () => new Date(baseDate.getTime() + 24 * 60 * 60 * 1000) },
+    { label: '+3 days', getDate: () => new Date(baseDate.getTime() + 3 * 24 * 60 * 60 * 1000) },
+    { label: '+5 days', getDate: () => new Date(baseDate.getTime() + 5 * 24 * 60 * 60 * 1000) },
+  ] : [
     { label: 'Today 5PM', getDate: () => { const d = new Date(); d.setHours(17, 0, 0, 0); return d; } },
-    { label: 'Tomorrow 9AM', getDate: () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; } },
-    { label: 'Next Monday', getDate: () => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); d.setHours(9, 0, 0, 0); return d; } },
-    { label: 'In 1 hour', getDate: () => new Date(Date.now() + 60 * 60 * 1000) },
+    { label: 'Tomorrow', getDate: () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; } },
+    { label: 'Next week', getDate: () => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(9, 0, 0, 0); return d; } },
   ];
 
   const handleSetReminder = async (date: Date) => {
@@ -719,6 +745,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.full,
     borderWidth: 1,
+  },
+  floatingMic: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   micSection: {
     padding: 14,

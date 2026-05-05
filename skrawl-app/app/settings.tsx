@@ -5,7 +5,8 @@ import { useThemeColors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore, type SwipeAction, type ReminderIntensity } from '@/src/store/ui-store';
 import { useSyncStore } from '@/src/store/sync-store';
 import * as WebBrowser from 'expo-web-browser';
-import { setApiKey as saveApiKey, getApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey } from '@/src/services/ai-service';
+import * as Updates from 'expo-updates';
+import { setApiKey as saveApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey } from '@/src/services/ai-service';
 import type { NoteType } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -35,7 +36,7 @@ export default function SettingsScreen() {
   const setSwipeRight = useUIStore((s) => s.setSwipeRight);
   const reminderIntensity = useUIStore((s) => s.reminderIntensity);
   const setReminderIntensity = useUIStore((s) => s.setReminderIntensity);
-  const { status: syncStatus, isSignedIn, user, sync, signInWithEmail, signUpWithEmail, signOut } = useSyncStore();
+  const { status: syncStatus, isSignedIn, user, sync, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } = useSyncStore();
 
   // Setting toggles
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -50,6 +51,7 @@ export default function SettingsScreen() {
   const [apiToken, setApiToken] = useState('');
   const [editingToken, setEditingToken] = useState(false);
   const [calSyncing, setCalSyncing] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [aiConnected, setAiConnected] = useState(isAiConfigured());
   const [verifying, setVerifying] = useState(false);
   const [authMode, setAuthMode] = useState<'none' | 'sso' | 'key'>('none');
@@ -123,9 +125,11 @@ export default function SettingsScreen() {
         </Group>
 
         {/* Personality / AI Vibe — Creative Design */}
-        <View style={[settStyles.group, { paddingHorizontal: spacing.xl }]}>
-          <Text style={[settStyles.groupLabel, { color: c.textMuted }]}>PERSONALITY</Text>
-          <View style={[vibeStyles.card, { backgroundColor: c.bgCard, borderColor: c.border }]}>
+        <View style={[settStyles.group, { paddingHorizontal: spacing.xl, opacity: aiConnected ? 1 : 0.5 }]}>
+          <Text style={[settStyles.groupLabel, { color: c.textMuted }]}>
+            PERSONALITY {!aiConnected && '(connect AI to unlock)'}
+          </Text>
+          <View style={[vibeStyles.card, { backgroundColor: c.bgCard, borderColor: c.border }]} pointerEvents={aiConnected ? 'auto' : 'none'}>
             {/* Gradient accent bar at top */}
             <View style={vibeStyles.gradientBar}>
               <View style={[vibeStyles.gradientLeft, { backgroundColor: '#FFB86A' }]} />
@@ -137,11 +141,11 @@ export default function SettingsScreen() {
               {/* Header — dynamic icon + description */}
               {(() => {
                 const vibes = [
-                  { icon: 'happy-outline' as const, color: '#FFB86A', title: 'Playful', desc: 'Light-hearted nudges with a wink' },
-                  { icon: 'chatbubble-ellipses-outline' as const, color: '#FF6AC2', title: 'Witty', desc: 'Sharp observations, clever reminders' },
+                  { icon: 'happy-outline' as const, color: '#FFB86A', title: 'Comedian', desc: 'Jokes, puns, and zero seriousness' },
+                  { icon: 'glasses-outline' as const, color: '#FF6AC2', title: 'Witty', desc: 'Smart humour — dry and clever' },
                   { icon: 'infinite-outline' as const, color: '#B06AFF', title: 'Balanced', desc: 'Best of both — wit meets drive' },
-                  { icon: 'pulse-outline' as const, color: '#6AB4FF', title: 'Coach', desc: 'Structured guidance, steady push' },
-                  { icon: 'flash-outline' as const, color: '#7C6AFF', title: 'Commander', desc: 'No fluff — pure execution mode' },
+                  { icon: 'trending-up-outline' as const, color: '#6AB4FF', title: 'Hustler', desc: 'Driven, focused, always pushing' },
+                  { icon: 'shield-checkmark-outline' as const, color: '#7C6AFF', title: 'Drill Sgt', desc: 'No excuses. Get it done. Now.' },
                 ];
                 const idx = vibeValue === 0 ? 0 : vibeValue === 25 ? 1 : vibeValue === 50 ? 2 : vibeValue === 75 ? 3 : 4;
                 const v = vibes[idx];
@@ -162,11 +166,11 @@ export default function SettingsScreen() {
               <View style={vibeStyles.sliderWrap}>
                 <View style={vibeStyles.zonesRow}>
                   {([
-                    { v: 0, icon: 'sunny-outline' as const, label: 'Chill', color: '#FFB86A' },
-                    { v: 25, icon: 'bulb-outline' as const, label: 'Clever', color: '#FF6AC2' },
-                    { v: 50, icon: 'git-compare-outline' as const, label: 'Blend', color: '#B06AFF' },
-                    { v: 75, icon: 'compass-outline' as const, label: 'Guide', color: '#6AB4FF' },
-                    { v: 100, icon: 'rocket-outline' as const, label: 'Launch', color: '#7C6AFF' },
+                    { v: 0, icon: 'happy-outline' as const, label: 'LOL', color: '#FFB86A' },
+                    { v: 25, icon: 'glasses-outline' as const, label: 'Witty', color: '#FF6AC2' },
+                    { v: 50, icon: 'infinite-outline' as const, label: 'Blend', color: '#B06AFF' },
+                    { v: 75, icon: 'trending-up-outline' as const, label: 'Hustle', color: '#6AB4FF' },
+                    { v: 100, icon: 'shield-checkmark-outline' as const, label: 'Drill', color: '#7C6AFF' },
                   ]).map((z) => {
                     const active = vibeValue === z.v;
                     const passed = vibeValue >= z.v;
@@ -319,13 +323,13 @@ export default function SettingsScreen() {
 
         {/* AI & Integrations */}
         <Group label="AI & INTEGRATIONS" c={c}>
-          {/* Claude connection status */}
+          {/* OpenAI connection status */}
           <View style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-            <View style={[styles.rowIcon, { backgroundColor: '#7C6AFF' }]}><Ionicons name="sparkles" size={16} color="#fff" /></View>
+            <View style={[styles.rowIcon, { backgroundColor: '#10A37F' }]}><Ionicons name="sparkles" size={16} color="#fff" /></View>
             <View style={{ flex: 1 }}>
-              <Text style={[typography.body, { color: c.text }]}>Claude AI</Text>
+              <Text style={[typography.body, { color: c.text }]}>OpenAI</Text>
               <Text style={[{ fontSize: 11, color: aiConnected ? c.accent3 : c.textMuted }]}>
-                {aiConnected ? 'Connected' : 'Not connected'}
+                {aiConnected ? 'Connected — GPT-4o-mini' : 'Not connected'}
               </Text>
             </View>
             {aiConnected ? (
@@ -345,17 +349,17 @@ export default function SettingsScreen() {
                 style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
                 onPress={async () => {
                   await WebBrowser.openBrowserAsync(
-                    'https://console.anthropic.com/settings/keys',
+                    'https://platform.openai.com/api-keys',
                     { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN }
                   );
                   setAuthMode('key');
                   setEditingToken(true);
                 }}
               >
-                <View style={[styles.rowIcon, { backgroundColor: '#D97706' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
+                <View style={[styles.rowIcon, { backgroundColor: '#10A37F' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.body, { color: c.text }]}>Get API Key</Text>
-                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>Sign up free at anthropic.com ($5 credit)</Text>
+                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>Sign up at platform.openai.com (free tier)</Text>
                 </View>
                 <Ionicons name="open-outline" size={16} color={c.textMuted} />
               </Pressable>
@@ -368,59 +372,61 @@ export default function SettingsScreen() {
                 <View style={[styles.rowIcon, { backgroundColor: '#7C6AFF' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.body, { color: c.text }]}>Paste API Key</Text>
-                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>From console.anthropic.com</Text>
+                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>From platform.openai.com/api-keys</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
               </Pressable>
 
-              {/* Info: what works without Claude */}
+              {/* Info */}
               <View style={[styles.row, { borderBottomColor: c.border }]}>
                 <View style={[styles.rowIcon, { backgroundColor: '#6AFFCB' }]}><Ionicons name="information-circle-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[{ fontSize: 12, color: c.textDim, lineHeight: 18 }]}>
-                    Works without sign-in: NL parsing, auto-reminders, auto-priority, nudges. Sign in adds: smart categorization, AI titles.
+                    Works without API key: NL parsing, auto-reminders, auto-priority, nudges. API key adds: smart categorization, AI titles, voice command processing.
                   </Text>
                 </View>
               </View>
             </>
           )}
 
-          {/* API Key input — shown after SSO or direct paste */}
+          {/* API Key input */}
           {editingToken && (
-            <View style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
-              <Text style={[{ fontSize: 12, color: c.textDim, lineHeight: 18 }]}>
-                {authMode === 'key' ? 'Paste your API key from console.anthropic.com/settings/keys:' : 'Enter your API key:'}
-              </Text>
+            <View style={{ padding: 14, gap: 8 }}>
+              <Text style={[{ fontSize: 12, color: c.textDim }]}>Paste your OpenAI API key:</Text>
               <TextInput
                 style={[styles.tokenInput, { color: c.text, borderColor: c.border, backgroundColor: c.bgInput }]}
                 value={apiToken}
                 onChangeText={setApiToken}
-                placeholder="sk-ant-api03-..."
+                placeholder="sk-..."
                 placeholderTextColor={c.textMuted}
                 autoFocus
                 autoCapitalize="none"
                 autoCorrect={false}
+                numberOfLines={1}
               />
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, alignItems: 'center' }}>
                 {verifying && <Text style={[{ fontSize: 12, color: c.accent }]}>Verifying...</Text>}
                 <Pressable onPress={() => { setEditingToken(false); setAuthMode('none'); }}>
                   <Text style={[{ fontSize: 13, fontWeight: '600', color: c.textDim }]}>Cancel</Text>
                 </Pressable>
-                <Pressable onPress={async () => {
-                  if (!apiToken.trim()) return;
-                  setVerifying(true);
-                  const valid = await verifyApiKey(apiToken.trim());
-                  setVerifying(false);
-                  if (valid) {
-                    saveApiKey(apiToken.trim());
-                    setAiConnected(true);
-                    setEditingToken(false);
-                    setAuthMode('none');
-                  } else {
-                    Alert.alert('Invalid Key', 'Could not verify this API key. Please check and try again.');
-                  }
-                }}>
-                  <Text style={[{ fontSize: 13, fontWeight: '600', color: c.accent }]}>Verify & Save</Text>
+                <Pressable
+                  style={{ backgroundColor: c.accent, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 100 }}
+                  onPress={async () => {
+                    if (!apiToken.trim()) return;
+                    setVerifying(true);
+                    const valid = await verifyApiKey(apiToken.trim());
+                    setVerifying(false);
+                    if (valid) {
+                      saveApiKey(apiToken.trim());
+                      setAiConnected(true);
+                      setEditingToken(false);
+                      setAuthMode('none');
+                    } else {
+                      Alert.alert('Invalid Key', 'Could not verify this API key. Please check and try again.');
+                    }
+                  }}
+                >
+                  <Text style={[{ fontSize: 13, fontWeight: '600', color: '#fff' }]}>Verify & Save</Text>
                 </Pressable>
               </View>
             </View>
@@ -523,12 +529,25 @@ export default function SettingsScreen() {
             </>
           ) : (
             <>
+              {/* Google Sign In */}
+              <Pressable
+                style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
+                onPress={async () => {
+                  const err = await signInWithGoogle();
+                  if (err) Alert.alert('Sign In Failed', err);
+                }}
+              >
+                <View style={[styles.rowIcon, { backgroundColor: '#4285F4' }]}><Ionicons name="logo-google" size={16} color="#fff" /></View>
+                <Text style={[typography.body, { color: c.text, flex: 1 }]}>Sign in with Google</Text>
+                <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
+              </Pressable>
+              {/* Email Sign In */}
               <Pressable
                 style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
                 onPress={() => setSignInMode(signInMode === 'signin' ? 'none' : 'signin')}
               >
-                <View style={[styles.rowIcon, { backgroundColor: '#7C6AFF' }]}><Ionicons name="log-in-outline" size={16} color="#fff" /></View>
-                <Text style={[typography.body, { color: c.text, flex: 1 }]}>Sign In</Text>
+                <View style={[styles.rowIcon, { backgroundColor: '#7C6AFF' }]}><Ionicons name="mail-outline" size={16} color="#fff" /></View>
+                <Text style={[typography.body, { color: c.text, flex: 1 }]}>Sign in with Email</Text>
                 <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
               </Pressable>
               <Pressable
@@ -585,8 +604,33 @@ export default function SettingsScreen() {
           )}
         </Group>
 
-        <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.0.1</Text>
+        <View style={{ alignItems: 'center', paddingVertical: 24, gap: 10 }}>
+          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.0.6</Text>
+          <Pressable
+            onPress={async () => {
+              try {
+                setUpdateStatus('Checking...');
+                const update = await Updates.checkForUpdateAsync();
+                if (update.isAvailable) {
+                  setUpdateStatus('Downloading...');
+                  await Updates.fetchUpdateAsync();
+                  setUpdateStatus('Restarting...');
+                  await Updates.reloadAsync();
+                } else {
+                  setUpdateStatus('Up to date');
+                  setTimeout(() => setUpdateStatus(null), 2000);
+                }
+              } catch (e: any) {
+                setUpdateStatus(`Error: ${e.message?.substring(0, 50) || 'Failed'}`);
+                setTimeout(() => setUpdateStatus(null), 3000);
+              }
+            }}
+            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 100, borderWidth: 1, borderColor: c.border }}
+          >
+            <Text style={[{ fontSize: 12, color: c.accent, fontWeight: '600' }]}>
+              {updateStatus || 'Check for updates'}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>

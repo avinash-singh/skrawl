@@ -24,11 +24,16 @@ const typeOptions: { value: NoteType; icon: keyof typeof Ionicons.glyphMap; labe
   { value: 'note', icon: 'document-text-outline', label: 'Note' },
 ];
 
-const priorityOptions: { value: PriorityLevel; label: string }[] = [
-  { value: 0, label: 'P0' },
-  { value: 1, label: 'P1' },
-  { value: 2, label: 'P2' },
-  { value: 3, label: 'P3' },
+const priorityConfig: { value: PriorityLevel; label: string; due: string; reminders: { label: string; hours: number }[] }[] = [
+  { value: 0, label: 'P0', due: '< 2 days', reminders: [
+    { label: '2 hours', hours: 2 }, { label: '12 hours', hours: 12 }, { label: '1 day', hours: 24 },
+  ]},
+  { value: 1, label: 'P1', due: '< 1 week', reminders: [
+    { label: '1 day', hours: 24 }, { label: '3 days', hours: 72 }, { label: '5 days', hours: 120 },
+  ]},
+  { value: 2, label: 'P2', due: '< 2 weeks', reminders: [
+    { label: '3 days', hours: 72 }, { label: '1 week', hours: 168 }, { label: '2 weeks', hours: 336 },
+  ]},
 ];
 
 export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
@@ -46,6 +51,7 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
   const [noteType, setNoteType] = useState<NoteType>(defaultMode);
   const [priority, setPriority] = useState<PriorityLevel | null>(null);
   const [folderId, setFolderId] = useState<string | null>(null);
+  const [selectedReminderHours, setSelectedReminderHours] = useState<number | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -96,15 +102,16 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
       recurrence: parsed.recurrence,
     });
 
-    // Create reminder if NL parsing found a date
-    if (parsed.reminderDate) {
+    // Create reminder — from NL parsing or selected hours
+    const reminderDate = parsed.reminderDate || (selectedReminderHours ? new Date(Date.now() + selectedReminderHours * 60 * 60 * 1000) : null);
+    if (reminderDate) {
       await addReminder({
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         noteId: note.id,
-        remindAt: parsed.reminderDate.toISOString(),
+        remindAt: reminderDate.toISOString(),
         calendarEventId: null,
         status: 'pending',
-        aiSuggested: false,
+        aiSuggested: !parsed.reminderDate,
         autoSet: false,
         createdAt: new Date().toISOString(),
         isDirty: true,
@@ -116,6 +123,7 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
     setFolderId(null);
     setShowOptions(false);
     setNlSuggestion(null);
+    setSelectedReminderHours(null);
     onClose();
     onNoteCreated(vibeValue);
   };
@@ -174,7 +182,16 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
               { borderColor: noteType === opt.value ? c.accent : c.border },
               noteType === opt.value && { backgroundColor: c.accentGlow },
             ]}
-            onPress={() => setNoteType(opt.value)}
+            onPress={async () => {
+              setNoteType(opt.value);
+              if (opt.value === 'list') {
+                // Open detail with list type pre-set
+                const note = await addNote({ title: title.trim() || '', context, type: 'list', priority, folderId });
+                setTitle('');
+                onClose();
+                onOpenDetail(note.id);
+              }
+            }}
           >
             <Ionicons name={opt.icon} size={14} color={noteType === opt.value ? c.accent : c.textDim} />
             <Text style={[styles.chipText, { color: noteType === opt.value ? c.accent : c.textDim }]}>
@@ -186,18 +203,49 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
         <View style={styles.chipDivider} />
 
         <Pressable
-          style={[styles.chip, { borderColor: showOptions ? c.accent : c.border }]}
-          onPress={() => setShowOptions(!showOptions)}
-        >
-          <Ionicons name="options-outline" size={14} color={showOptions ? c.accent : c.textDim} />
-        </Pressable>
-
-        <Pressable
           style={[styles.chip, { borderColor: c.border }]}
           onPress={handleOpenDetail}
         >
           <Ionicons name="expand-outline" size={14} color={c.textDim} />
         </Pressable>
+      </View>
+
+      {/* Priority with due date + reminder suggestions */}
+      <View style={{ gap: 6 }}>
+        <View style={styles.optionRow}>
+          {priorityConfig.map((opt) => {
+            const priColor = colors.priority[opt.value];
+            const selected = priority === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                style={[styles.priChip, { borderColor: selected ? priColor : c.border }, selected && { backgroundColor: `${priColor}22` }]}
+                onPress={() => { setPriority(selected ? null : opt.value); setSelectedReminderHours(null); }}
+              >
+                <Text style={[styles.priText, { color: selected ? priColor : c.textDim }]}>{opt.label}</Text>
+                <Text style={[{ fontSize: 9, color: selected ? priColor : c.textMuted }]}>{opt.due}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {/* Reminder options based on selected priority */}
+        {priority !== null && (
+          <View style={styles.optionRow}>
+            <Ionicons name="alarm-outline" size={12} color={c.textMuted} />
+            {priorityConfig.find((p) => p.value === priority)?.reminders.map((r) => {
+              const selected = selectedReminderHours === r.hours;
+              return (
+                <Pressable
+                  key={r.hours}
+                  style={[styles.reminderChip, { borderColor: selected ? c.accent : c.border }, selected && { backgroundColor: c.accentGlow }]}
+                  onPress={() => setSelectedReminderHours(selected ? null : r.hours)}
+                >
+                  <Text style={[{ fontSize: 10, fontWeight: '600', color: selected ? c.accent : c.textDim }]}>{r.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       {/* NL suggestion chips */}
@@ -222,34 +270,9 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
         </Animated.View>
       )}
 
-      {/* Expanded options */}
+      {/* Folder options */}
       {showOptions && (
         <Animated.View entering={FadeIn.duration(150)} style={styles.optionsSection}>
-          <View style={styles.optionGroup}>
-            <Text style={[typography.tiny, { color: c.textMuted, marginBottom: 6 }]}>PRIORITY</Text>
-            <View style={styles.optionRow}>
-              {priorityOptions.map((opt) => {
-                const priColor = colors.priority[opt.value];
-                const selected = priority === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    style={[
-                      styles.priChip,
-                      { borderColor: selected ? priColor : c.border },
-                      selected && { backgroundColor: `${priColor}22` },
-                    ]}
-                    onPress={() => setPriority(selected ? null : opt.value)}
-                  >
-                    <Text style={[styles.priText, { color: selected ? priColor : c.textDim }]}>
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
           {folders.length > 0 && (
             <View style={styles.optionGroup}>
               <Text style={[typography.tiny, { color: c.textMuted, marginBottom: 6 }]}>FOLDER</Text>
@@ -367,6 +390,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  reminderChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 100,
+    borderWidth: 1,
   },
   nlRow: {
     flexDirection: 'row',

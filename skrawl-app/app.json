@@ -56,7 +56,13 @@
     },
     "owner": "avinash-singh-122",
     "updates": {
-      "url": "https://u.expo.dev/688d4039-5596-48d5-af4f-06342bc69804"
+      "url": "https://u.expo.dev/688d4039-5596-48d5-af4f-06342bc69804",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 5000,
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     }
   }
 }

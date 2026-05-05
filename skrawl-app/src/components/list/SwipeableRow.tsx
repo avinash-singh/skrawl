@@ -27,7 +27,6 @@ const priorityOptions: { value: PriorityLevel; label: string }[] = [
   { value: 0, label: 'P0' },
   { value: 1, label: 'P1' },
   { value: 2, label: 'P2' },
-  { value: 3, label: 'P3' },
 ];
 
 export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onPriorityChange, currentPriority, isDone, isPinned }: Props) {

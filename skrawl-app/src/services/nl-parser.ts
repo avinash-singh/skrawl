@@ -20,7 +20,7 @@ const priorityPatterns: { pattern: RegExp; level: PriorityLevel }[] = [
   { pattern: /\b(urgent|critical|asap|p0)\b/i, level: 0 },
   { pattern: /\b(important|high|p1)\b/i, level: 1 },
   { pattern: /\b(medium|p2)\b/i, level: 2 },
-  { pattern: /\b(low|p3|whenever)\b/i, level: 3 },
+  { pattern: /\b(low|whenever)\b/i, level: 2 },
 ];
 
 const recurrencePatterns: { pattern: RegExp; recurrence: string }[] = [
@@ -185,13 +185,6 @@ export function suggestReminderForPriority(priority: PriorityLevel | null): Date
     d.setHours(9, 0, 0, 0);
     return d;
   }
-  if (priority === 3) {
-    // P3: 1 week from now, 9am
-    const d = new Date(now);
-    d.setDate(d.getDate() + 7);
-    d.setHours(9, 0, 0, 0);
-    return d;
-  }
   // No priority: 2 days from now, 9am
   const d = new Date(now);
   d.setDate(d.getDate() + 2);
@@ -209,8 +202,7 @@ export function suggestPriorityFromDueDate(dueDate: Date): PriorityLevel {
 
   if (hoursUntilDue <= 48) return 0;      // Due within 2 days → P0
   if (hoursUntilDue <= 72) return 1;      // Due within 3 days → P1
-  if (hoursUntilDue <= 168) return 2;     // Due within 1 week → P2
-  return 3;                                // Due later → P3
+  return 2;                                // Due later → P2
 }
 
 /**

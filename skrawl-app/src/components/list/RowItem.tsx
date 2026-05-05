@@ -5,6 +5,7 @@ import { useThemeColors, colors, typography, radii } from '@/src/theme';
 import { useNoteStore } from '@/src/store/note-store';
 import { useUIStore } from '@/src/store/ui-store';
 import { useNudgeStore } from '@/src/store/nudge-store';
+import { useReminderStore } from '@/src/store/reminder-store';
 import type { Note } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -26,7 +27,9 @@ export function RowItem({ note, index, onPress, onLongPress }: Props) {
   const toggleDone = useNoteStore((s) => s.toggleDone);
   const vibeValue = useUIStore((s) => s.vibeValue);
   const onNoteCompleted = useNudgeStore((s) => s.onNoteCompleted);
+  const reminders = useReminderStore((s) => s.reminders);
   const n = note;
+  const noteReminder = reminders.find((r) => r.noteId === n.id);
   const d = n.isDone;
 
   // Color for stripe and type icon
@@ -38,12 +41,18 @@ export function RowItem({ note, index, onPress, onLongPress }: Props) {
 
   // Subtitle parts
   const subParts: string[] = [];
+  if (noteReminder && !d) {
+    const rd = new Date(noteReminder.remindAt);
+    const now = new Date();
+    const diffH = Math.round((rd.getTime() - now.getTime()) / (1000 * 60 * 60));
+    const overdue = diffH < 0;
+    const timeStr = diffH < 0 ? 'Overdue' : diffH < 24 ? `${diffH}h left` : `${Math.round(diffH / 24)}d left`;
+    subParts.push(`${rd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${timeStr}`);
+  }
   if (n.items.length > 0) {
     const doneCount = n.items.filter((i) => i.isDone).length;
     subParts.push(`${doneCount}/${n.items.length}`);
-    const undone = n.items.filter((i) => !i.isDone).slice(0, 2).map((i) => i.text).join(', ');
-    if (undone) subParts.push(undone);
-  } else if (n.body) {
+  } else if (n.body && !noteReminder) {
     subParts.push(n.body.split('\n')[0].substring(0, 50));
   }
   const subtitle = subParts.join(' · ');

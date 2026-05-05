@@ -1,18 +1,15 @@
 /**
- * AI Service — Claude API integration for Skrawl.
+ * AI Service — OpenAI integration for Skrawl.
  *
- * Two ways to connect:
- * 1. API Key — paste directly from console.anthropic.com
- * 2. Sign in with Anthropic — opens browser to authenticate via SSO/OAuth,
- *    user creates key in console, pastes back
+ * Uses GPT-4o-mini (cheapest, fastest).
+ * Get a key at platform.openai.com/api-keys
  *
- * Uses Claude Haiku 4.5 (cheapest, fastest) for all operations.
- * Free tier: $5 credit on signup at anthropic.com
+ * All prompts honour the personality/vibe setting:
+ * 0 = humorous, 100 = motivational/professional
  */
 
-import * as WebBrowser from 'expo-web-browser';
-
-const API_URL = 'https://api.anthropic.com/v1/messages';
+const API_URL = 'https://api.openai.com/v1/chat/completions';
+const MODEL = 'gpt-4o-mini';
 
 let _apiKey: string | null = null;
 let _sessionActive = false;
@@ -41,46 +38,16 @@ export function isSessionActive(): boolean {
   return _sessionActive;
 }
 
-// ===== OAuth-style Authentication =====
-
 /**
- * Open Anthropic console in browser for user to authenticate via SSO
- * and create/copy an API key. Returns when the browser is dismissed.
- */
-export async function openAnthropicAuth(): Promise<void> {
-  await WebBrowser.openBrowserAsync('https://console.anthropic.com/settings/keys', {
-    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-    controlsColor: '#7C6AFF',
-  });
-}
-
-/**
- * Open Anthropic signup page for new users
- */
-export async function openAnthropicSignup(): Promise<void> {
-  await WebBrowser.openBrowserAsync('https://console.anthropic.com/', {
-    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-    controlsColor: '#7C6AFF',
-  });
-}
-
-/**
- * Verify an API key works by making a minimal test call
+ * Verify an API key works — uses the models list endpoint (free, no tokens consumed)
  */
 export async function verifyApiKey(key: string): Promise<boolean> {
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${key}`,
       },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 5,
-        messages: [{ role: 'user', content: 'Hi' }],
-      }),
     });
     return response.ok;
   } catch {
@@ -88,9 +55,19 @@ export async function verifyApiKey(key: string): Promise<boolean> {
   }
 }
 
-// ===== Claude API Calls =====
+// ===== Personality System Prompt =====
 
-async function callClaude(prompt: string, maxTokens: number = 200): Promise<string | null> {
+function getPersonalityPrompt(vibeValue: number): string {
+  if (vibeValue <= 15) return 'You are a comedian assistant. Use jokes, puns, sarcasm, and make everything funny. Still be helpful but always entertaining.';
+  if (vibeValue <= 35) return 'You are a witty assistant with sharp, dry humour. Clever observations and smart remarks, but get the job done.';
+  if (vibeValue <= 65) return 'You are a balanced assistant — friendly, warm, and efficient. A good mix of personality and productivity.';
+  if (vibeValue <= 85) return 'You are a hustler assistant. Driven, focused, always pushing forward. Motivate the user to take action and crush their goals.';
+  return 'You are a drill sergeant assistant. No excuses, no fluff, no wasted words. Direct orders. Get it done. Now.';
+}
+
+// ===== OpenAI API Call =====
+
+async function callAI(prompt: string, vibeValue: number = 50, maxTokens: number = 200): Promise<string | null> {
   if (!_apiKey) return null;
 
   try {
@@ -98,23 +75,28 @@ async function callClaude(prompt: string, maxTokens: number = 200): Promise<stri
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': _apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${_apiKey}`,
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: MODEL,
         max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: getPersonalityPrompt(vibeValue) },
+          { role: 'user', content: prompt },
+        ],
       }),
     });
 
     if (!response.ok) return null;
     const data = await response.json();
-    return data.content?.[0]?.text || null;
+    return data.choices?.[0]?.message?.content?.trim() || null;
   } catch {
     return null;
   }
 }
+
+// ===== AI Features =====
 
 /**
  * Suggest folder + priority for a note based on title
@@ -122,19 +104,23 @@ async function callClaude(prompt: string, maxTokens: number = 200): Promise<stri
 export async function suggestCategorization(
   title: string,
   folders: { id: string; name: string }[],
+  vibeValue: number = 50,
 ): Promise<{ folderId: string | null; priority: number | null } | null> {
   const folderList = folders.map((f) => f.name).join(', ');
-  const result = await callClaude(
-    `Given this note title: "${title}"
+  const result = await callAI(
+    `Given this note/task title: "${title}"
 Available folders: ${folderList || 'none'}
 Suggest the best folder name (or "none") and priority level (0=critical, 1=high, 2=medium, 3=low, null=unset).
 Reply ONLY as JSON: {"folder":"name","priority":1}`,
+    vibeValue,
     100,
   );
 
   if (!result) return null;
   try {
-    const parsed = JSON.parse(result);
+    const jsonStr = result.match(/\{[\s\S]*\}/)?.[0];
+    if (!jsonStr) return null;
+    const parsed = JSON.parse(jsonStr);
     const folder = folders.find((f) => f.name.toLowerCase() === parsed.folder?.toLowerCase());
     return { folderId: folder?.id || null, priority: typeof parsed.priority === 'number' ? parsed.priority : null };
   } catch {
@@ -145,10 +131,55 @@ Reply ONLY as JSON: {"folder":"name","priority":1}`,
 /**
  * Generate a title from body text
  */
-export async function generateTitle(body: string): Promise<string | null> {
-  return callClaude(
-    `Generate a concise title (max 8 words) for this note. Reply with ONLY the title, no quotes:\n\n${body.substring(0, 500)}`,
+export async function generateTitle(body: string, vibeValue: number = 50): Promise<string | null> {
+  return callAI(
+    `Generate a concise title (max 8 words) for this note. Reply with ONLY the title, no quotes or explanation:\n\n${body.substring(0, 500)}`,
+    vibeValue,
     50,
+  );
+}
+
+/**
+ * Process voice/text input and return structured updates for a note
+ */
+export async function processVoiceInput(
+  input: string,
+  currentNote: { title: string; body: string; priority: number | null },
+  vibeValue: number = 50,
+): Promise<{ title?: string; body?: string; priority?: number } | null> {
+  const result = await callAI(
+    `User wants to update their note via voice command.
+Current note - Title: "${currentNote.title}", Body: "${currentNote.body}", Priority: ${currentNote.priority ?? 'none'}
+User said: "${input}"
+
+Interpret what they want and reply ONLY as JSON with fields to update:
+{"title":"new title","body":"new or appended body","priority":0}
+Only include fields that should change. For body, if appending, include the full new body.`,
+    vibeValue,
+    200,
+  );
+
+  if (!result) return null;
+  try {
+    const jsonStr = result.match(/\{[\s\S]*\}/)?.[0];
+    if (!jsonStr) return null;
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generate a smart briefing message for the AI banner
+ */
+export async function generateBriefing(
+  notesSummary: string,
+  vibeValue: number = 50,
+): Promise<string | null> {
+  return callAI(
+    `You're a productivity assistant. Given these active notes/tasks:\n${notesSummary}\n\nWrite a single short sentence (max 15 words) as a daily briefing. Be actionable.`,
+    vibeValue,
+    30,
   );
 }
 
@@ -157,26 +188,35 @@ export async function generateTitle(body: string): Promise<string | null> {
  */
 export async function suggestGoals(
   existingGoals: string[],
+  vibeValue: number = 50,
 ): Promise<{ name: string; target: number; unit: string; category: string }[] | null> {
-  const result = await callClaude(
+  const result = await callAI(
     `Suggest 3 personal improvement goals. Existing: ${existingGoals.join(', ') || 'none'}.
 Reply ONLY as JSON array: [{"name":"...","target":8,"unit":"glasses","category":"health"}]
 Categories: fitness, nutrition, learning, health, general`,
+    vibeValue,
     300,
   );
   if (!result) return null;
-  try { return JSON.parse(result); } catch { return null; }
+  try {
+    const jsonStr = result.match(/\[[\s\S]*\]/)?.[0];
+    if (!jsonStr) return null;
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Estimate calories from meal description
  */
-export async function estimateCalories(description: string): Promise<number | null> {
-  const result = await callClaude(
-    `Estimate total calories for: "${description}". Reply with ONLY a number.`,
+export async function estimateCalories(description: string, vibeValue: number = 50): Promise<number | null> {
+  const result = await callAI(
+    `Estimate total calories for: "${description}". Reply with ONLY a number (integer).`,
+    vibeValue,
     20,
   );
   if (!result) return null;
-  const num = parseInt(result.trim(), 10);
+  const num = parseInt(result.replace(/[^0-9]/g, ''), 10);
   return isNaN(num) ? null : num;
 }

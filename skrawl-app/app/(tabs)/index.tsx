@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore } from '@/src/store/ui-store';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { useNoteStore } from '@/src/store/note-store';
 import { useFolderStore } from '@/src/store/folder-store';
 import { useUndoStore } from '@/src/store/undo-store';
@@ -52,7 +54,22 @@ export default function HomeScreen() {
   const reminders = useReminderStore((s) => s.reminders);
   const loadReminders = useReminderStore((s) => s.loadReminders);
   const vibeValue = useUIStore((s) => s.vibeValue);
+  const setContext = useUIStore((s) => s.setContext);
   const { onNoteCompleted, onAllP0sClear, onNoteDeleted } = useNudgeStore();
+
+  const switchContext = useCallback(() => {
+    setContext(context === 'personal' ? 'business' : 'personal');
+  }, [context, setContext]);
+
+  const contextSwipe = Gesture.Pan()
+    .activeOffsetX([-30, 30])
+    .failOffsetY([-10, 10])
+    .onEnd((e) => {
+      'worklet';
+      if (Math.abs(e.translationX) > 80) {
+        runOnJS(switchContext)();
+      }
+    });
 
   const currentFolder = useUIStore((s) => s.currentFolder);
   const setCurrentFolder = useUIStore((s) => s.setCurrentFolder);
@@ -387,15 +404,19 @@ export default function HomeScreen() {
           const active = notes.filter((n) => !n.isDone && !n.deletedAt);
           const noteIds = new Set(notes.map((n) => n.id));
           const ctxReminders = reminders.filter((r) => noteIds.has(r.noteId));
+          let raw: Note[];
           switch (aiInsight.type) {
-            case 'p0-overload': return active.filter((n) => n.priority === 0);
-            case 'overdue': return ctxReminders.filter((r) => new Date(r.remindAt) < new Date()).map((r) => notes.find((n) => n.id === r.noteId)).filter(Boolean) as Note[];
-            case 'due-soon': return aiInsight.actions.map((a) => getNoteById(a.id)).filter(Boolean) as Note[];
-            case 'unorganized': return active.filter((n) => n.priority === null).slice(0, 5);
-            case 'stale': return active.filter((n) => Date.now() - new Date(n.updatedAt).getTime() > 3 * 24 * 60 * 60 * 1000).slice(0, 5);
-            case 'focus': return active.filter((n) => n.priority !== null && n.priority <= 1).slice(0, 3);
-            default: return [];
+            case 'p0-overload': raw = active.filter((n) => n.priority === 0); break;
+            case 'overdue': raw = ctxReminders.filter((r) => new Date(r.remindAt) < new Date()).map((r) => notes.find((n) => n.id === r.noteId)).filter(Boolean) as Note[]; break;
+            case 'due-soon': raw = aiInsight.actions.map((a) => getNoteById(a.id)).filter(Boolean) as Note[]; break;
+            case 'unorganized': raw = active.filter((n) => n.priority === null).slice(0, 5); break;
+            case 'stale': raw = active.filter((n) => Date.now() - new Date(n.updatedAt).getTime() > 3 * 24 * 60 * 60 * 1000).slice(0, 5); break;
+            case 'focus': raw = active.filter((n) => n.priority !== null && n.priority <= 1).slice(0, 3); break;
+            default: raw = [];
           }
+          // Deduplicate by id
+          const seen = new Set<string>();
+          return raw.filter((n) => { if (seen.has(n.id)) return false; seen.add(n.id); return true; });
         })();
 
         return (
@@ -529,6 +550,7 @@ export default function HomeScreen() {
   }
 
   return (
+    <GestureDetector gesture={contextSwipe}>
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <FlashList
         data={listData}
@@ -543,7 +565,7 @@ export default function HomeScreen() {
         <MorphingFAB
           isCapturing={captureVisible || voiceMode}
           onTap={() => { voiceMode ? setVoiceMode(false) : setCaptureVisible(!captureVisible); }}
-          onLongPress={() => { setCaptureVisible(false); setVoiceMode(true); }}
+          onLongPress={() => { setCaptureVisible(false); Keyboard.dismiss(); setVoiceMode(true); }}
         />
       )}
 
@@ -578,6 +600,7 @@ export default function HomeScreen() {
         </View>
       )}
     </View>
+    </GestureDetector>
   );
 }
 

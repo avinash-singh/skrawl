@@ -9,24 +9,24 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		467C8CCAC34F468C561F6A7A /* libPods-skrawlapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5AB13E2B9B471A0594E53CE7 /* libPods-skrawlapp.a */; };
-		5EB838ADC3AC1F4867649A0A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 349E5E9091513D0B5C7659F6 /* PrivacyInfo.xcprivacy */; };
-		A2F6DA8D395E912963266464 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB43214D219376719C3AE35 /* ExpoModulesProvider.swift */; };
+		4277284A9C836D7C37BBE837 /* libPods-skrawlapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 585ADAA6AE0B68C65755B52B /* libPods-skrawlapp.a */; };
+		496AED8DDCDB2742BDBD8F36 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBFA4D7557135B8E2F90E17 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		FD41A9297B97B75455B5B72A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 306AD161E96B6FB368CB38A3 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* skrawlapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = skrawlapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = skrawlapp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = skrawlapp/Info.plist; sourceTree = "<group>"; };
-		349E5E9091513D0B5C7659F6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = skrawlapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		5AB13E2B9B471A0594E53CE7 /* libPods-skrawlapp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-skrawlapp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		6AB43214D219376719C3AE35 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-skrawlapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		1B89A713AD49641899B86711 /* Pods-skrawlapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-skrawlapp.release.xcconfig"; path = "Target Support Files/Pods-skrawlapp/Pods-skrawlapp.release.xcconfig"; sourceTree = "<group>"; };
+		306AD161E96B6FB368CB38A3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = skrawlapp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		585ADAA6AE0B68C65755B52B /* libPods-skrawlapp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-skrawlapp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9CBFA4D7557135B8E2F90E17 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-skrawlapp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = skrawlapp/SplashScreen.storyboard; sourceTree = "<group>"; };
-		ADB0A31D86316F594DC4FE7E /* Pods-skrawlapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-skrawlapp.debug.xcconfig"; path = "Target Support Files/Pods-skrawlapp/Pods-skrawlapp.debug.xcconfig"; sourceTree = "<group>"; };
-		B9CF2E07180510C2CA4693B9 /* Pods-skrawlapp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-skrawlapp.release.xcconfig"; path = "Target Support Files/Pods-skrawlapp/Pods-skrawlapp.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		CCAD07366E8D82D42FB95BC9 /* Pods-skrawlapp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-skrawlapp.debug.xcconfig"; path = "Target Support Files/Pods-skrawlapp/Pods-skrawlapp.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = skrawlapp/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* skrawlapp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "skrawlapp-Bridging-Header.h"; path = "skrawlapp/skrawlapp-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				467C8CCAC34F468C561F6A7A /* libPods-skrawlapp.a in Frameworks */,
+				4277284A9C836D7C37BBE837 /* libPods-skrawlapp.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,34 +53,26 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				349E5E9091513D0B5C7659F6 /* PrivacyInfo.xcprivacy */,
+				306AD161E96B6FB368CB38A3 /* PrivacyInfo.xcprivacy */,
 			);
 			name = skrawlapp;
+			sourceTree = "<group>";
+		};
+		23B7FDFC634F9DBB0B25D5F5 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				F912535DBAA021376955188B /* skrawlapp */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				5AB13E2B9B471A0594E53CE7 /* libPods-skrawlapp.a */,
+				585ADAA6AE0B68C65755B52B /* libPods-skrawlapp.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		3EB2BF332BCD3ECF9A9D50A6 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				7988C889C9078532AB92147E /* skrawlapp */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		7988C889C9078532AB92147E /* skrawlapp */ = {
-			isa = PBXGroup;
-			children = (
-				6AB43214D219376719C3AE35 /* ExpoModulesProvider.swift */,
-			);
-			name = skrawlapp;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -97,8 +89,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				E168BB4F41185E99FB7A5B19 /* Pods */,
-				3EB2BF332BCD3ECF9A9D50A6 /* ExpoModulesProviders */,
+				E5EBF3BC6E1039A5A4947A18 /* Pods */,
+				23B7FDFC634F9DBB0B25D5F5 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -122,14 +114,22 @@
 			path = skrawlapp/Supporting;
 			sourceTree = "<group>";
 		};
-		E168BB4F41185E99FB7A5B19 /* Pods */ = {
+		E5EBF3BC6E1039A5A4947A18 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				ADB0A31D86316F594DC4FE7E /* Pods-skrawlapp.debug.xcconfig */,
-				B9CF2E07180510C2CA4693B9 /* Pods-skrawlapp.release.xcconfig */,
+				CCAD07366E8D82D42FB95BC9 /* Pods-skrawlapp.debug.xcconfig */,
+				1B89A713AD49641899B86711 /* Pods-skrawlapp.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		F912535DBAA021376955188B /* skrawlapp */ = {
+			isa = PBXGroup;
+			children = (
+				9CBFA4D7557135B8E2F90E17 /* ExpoModulesProvider.swift */,
+			);
+			name = skrawlapp;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "skrawlapp" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				4828A63248D5DB05640E9B4B /* [Expo] Configure project */,
+				165E6BF8DA5323E958170BF6 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				35A4DCF4AA34A7A7CA96A132 /* [CP] Embed Pods Frameworks */,
+				B21262C7445D3848E33D7486 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				5EB838ADC3AC1F4867649A0A /* PrivacyInfo.xcprivacy in Resources */,
+				FD41A9297B97B75455B5B72A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -242,29 +242,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		35A4DCF4AA34A7A7CA96A132 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-skrawlapp/Pods-skrawlapp-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-skrawlapp/Pods-skrawlapp-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		4828A63248D5DB05640E9B4B /* [Expo] Configure project */ = {
+		165E6BF8DA5323E958170BF6 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -326,6 +304,28 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-skrawlapp/Pods-skrawlapp-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		B21262C7445D3848E33D7486 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-skrawlapp/Pods-skrawlapp-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-skrawlapp/Pods-skrawlapp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -334,7 +334,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				A2F6DA8D395E912963266464 /* ExpoModulesProvider.swift in Sources */,
+				496AED8DDCDB2742BDBD8F36 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,7 +343,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = ADB0A31D86316F594DC4FE7E /* Pods-skrawlapp.debug.xcconfig */;
+			baseConfigurationReference = CCAD07366E8D82D42FB95BC9 /* Pods-skrawlapp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -381,7 +381,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B9CF2E07180510C2CA4693B9 /* Pods-skrawlapp.release.xcconfig */;
+			baseConfigurationReference = 1B89A713AD49641899B86711 /* Pods-skrawlapp.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

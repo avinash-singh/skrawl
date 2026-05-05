@@ -49,8 +49,7 @@ export function VoiceInput({ visible, onClose, onCreated }: Props) {
       setIsListening(true);
       setParsedPreview(null);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      // Auto-focus the text input after animation
-      setTimeout(() => inputRef.current?.focus(), 500);
+      // Don't auto-focus — let user tap the input to open keyboard
     }
   }, [visible]);
 
