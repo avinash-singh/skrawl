@@ -8,26 +8,42 @@
  * 0 = humorous, 100 = motivational/professional
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const API_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
+const STORAGE_KEY = 'skrawl_openai_key';
 
 let _apiKey: string | null = null;
-let _sessionActive = false;
+let _loaded = false;
 
-// ===== Key Management =====
+// ===== Key Management (persisted to AsyncStorage) =====
+
+export async function loadApiKey(): Promise<void> {
+  if (_loaded) return;
+  try {
+    const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    if (stored) _apiKey = stored;
+  } catch {}
+  _loaded = true;
+}
 
 export function getApiKey(): string | null {
   return _apiKey;
 }
 
-export function setApiKey(key: string): void {
+export async function setApiKey(key: string): Promise<void> {
   _apiKey = key.trim();
-  _sessionActive = true;
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, _apiKey);
+  } catch {}
 }
 
-export function clearApiKey(): void {
+export async function clearApiKey(): Promise<void> {
   _apiKey = null;
-  _sessionActive = false;
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch {}
 }
 
 export function isConfigured(): boolean {
@@ -35,7 +51,7 @@ export function isConfigured(): boolean {
 }
 
 export function isSessionActive(): boolean {
-  return _sessionActive;
+  return !!_apiKey;
 }
 
 /**

@@ -21,6 +21,7 @@ const actionConfig: Record<SwipeAction, { icon: keyof typeof Ionicons.glyphMap; 
   pin: { icon: 'pin', label: 'Pin', color: '#7C6AFF' },
   delete: { icon: 'trash', label: 'Delete', color: '#FF5A5A' },
   archive: { icon: 'archive', label: 'Archive', color: '#FFB86A' },
+  priority: { icon: 'flag', label: 'Priority', color: '#6AB4FF' },
 };
 
 const priorityOptions: { value: PriorityLevel; label: string }[] = [
@@ -91,18 +92,37 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onPriorityCh
     );
   };
 
-  const renderRightActions = () => (
-    <Pressable
-      style={[styles.actionPane, styles.rightPane, { backgroundColor: leftConfig.color }]}
-      onPress={() => {
-        swipeRef.current?.close();
-        onSwipeLeft();
-      }}
-    >
-      <Ionicons name={leftConfig.icon} size={22} color="#fff" />
-      <Text style={styles.actionLabel}>{leftConfig.label}</Text>
-    </Pressable>
-  );
+  const renderRightActions = () => {
+    // Show priority buttons on right swipe if configured
+    if (swipeLeftAction === 'priority' && onPriorityChange) {
+      return (
+        <View style={styles.priorityPane}>
+          {priorityOptions.map((opt) => {
+            const priColor = colors.priority[opt.value];
+            const isActive = currentPriority === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                style={[styles.priBtn, { backgroundColor: isActive ? priColor : `${priColor}22`, borderColor: priColor }]}
+                onPress={() => { onPriorityChange(isActive ? null : opt.value); swipeRef.current?.close(); }}
+              >
+                <Text style={[styles.priText, { color: isActive ? '#fff' : priColor }]}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      );
+    }
+    return (
+      <Pressable
+        style={[styles.actionPane, styles.rightPane, { backgroundColor: leftConfig.color }]}
+        onPress={() => { swipeRef.current?.close(); onSwipeLeft(); }}
+      >
+        <Ionicons name={leftConfig.icon} size={22} color="#fff" />
+        <Text style={styles.actionLabel}>{leftConfig.label}</Text>
+      </Pressable>
+    );
+  };
 
   return (
     <Swipeable

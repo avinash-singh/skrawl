@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform, Share, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
 import { useNoteStore } from '@/src/store/note-store';
 import { useFolderStore } from '@/src/store/folder-store';
@@ -411,7 +411,7 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
             ))}
             <View style={styles.addItemRow}>
               <Ionicons name="add-circle-outline" size={18} color={c.accent} />
-              <TextInput
+              <BottomSheetTextInput
                 style={[typography.body, { flex: 1, color: c.text }]}
                 value={newItemText}
                 onChangeText={setNewItemText}
@@ -456,6 +456,7 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
   const dismissReminder = useReminderStore((s) => s.dismissReminder);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(new Date());
+  const [lastTapped, setLastTapped] = useState<string | null>(null);
 
   const noteReminders = noteId ? reminders.filter((r) => r.noteId === noteId) : [];
 
@@ -533,21 +534,29 @@ function ReminderBar({ noteId, priority, onPriorityChange }: { noteId: string | 
 
       {/* Preset buttons */}
       <View style={reminderStyles.presetRow}>
-        {presets.map((p) => (
-          <Pressable
-            key={p.label}
-            style={[reminderStyles.presetBtn, { borderColor: c.border, backgroundColor: c.bgCard }]}
-            onPress={() => handleSetReminder(p.getDate())}
-          >
-            <Text style={[{ fontSize: 12, fontWeight: '500', color: c.textDim }]}>{p.label}</Text>
-          </Pressable>
-        ))}
+        {presets.map((p) => {
+          const tapped = lastTapped === p.label;
+          return (
+            <Pressable
+              key={p.label}
+              style={[reminderStyles.presetBtn, { borderColor: tapped ? c.accent3 : c.border, backgroundColor: tapped ? `${c.accent3}20` : c.bgCard }]}
+              onPress={() => {
+                setLastTapped(p.label);
+                setShowPicker(false);
+                handleSetReminder(p.getDate());
+                setTimeout(() => setLastTapped(null), 1500);
+              }}
+            >
+              <Text style={[{ fontSize: 12, fontWeight: '500', color: tapped ? c.accent3 : c.textDim }]}>{p.label}</Text>
+            </Pressable>
+          );
+        })}
         <Pressable
-          style={[reminderStyles.presetBtn, { borderColor: c.accent, backgroundColor: c.accentGlow }]}
-          onPress={() => openPicker()}
+          style={[reminderStyles.presetBtn, { borderColor: showPicker ? c.accent : c.border, backgroundColor: showPicker ? c.accentGlow : c.bgCard }]}
+          onPress={() => { setLastTapped(null); openPicker(); }}
         >
-          <Ionicons name="calendar-outline" size={12} color={c.accent} />
-          <Text style={[{ fontSize: 12, fontWeight: '500', color: c.accent }]}>Pick</Text>
+          <Ionicons name="calendar-outline" size={12} color={showPicker ? c.accent : c.textDim} />
+          <Text style={[{ fontSize: 12, fontWeight: '500', color: showPicker ? c.accent : c.textDim }]}>Pick</Text>
         </Pressable>
       </View>
 

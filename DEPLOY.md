@@ -12,17 +12,24 @@
 
 For JS-only changes (components, logic, styles, stores):
 
+**IMPORTANT:** Always bump the version in `app/settings.tsx` before pushing OTA so the user can verify the update was applied via Settings → scroll to bottom.
+
 ```bash
 cd ~/Workspace/skrawl/skrawl-app
+
+# 1. Update version string in app/settings.tsx
+#    Change: Skrawl v1.0.X → Skrawl v1.0.(X+1)
+
+# 2. Push OTA with version in message
 nvm use 20
-npx eas-cli update --branch production --message "Fix: description of change"
+npx eas-cli update --branch production --message "v1.0.X: description of change"
 ```
 
-Users get the update automatically on next app launch.
+Users tap **"Check for updates"** in Settings to apply, or it auto-checks on app launch.
 
 **What qualifies as OTA:** Any change to `.ts`, `.tsx`, `.js` files, or JS-loaded assets.
 
-**What requires a full rebuild:** New native modules, `app.json` changes, iOS config changes.
+**What requires a full rebuild:** New native modules, `app.json` changes, iOS config changes, `expo prebuild`.
 
 ---
 

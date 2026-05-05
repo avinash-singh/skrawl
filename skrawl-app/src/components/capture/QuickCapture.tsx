@@ -230,8 +230,8 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
         </View>
         {/* Reminder options based on selected priority */}
         {priority !== null && (
-          <View style={styles.optionRow}>
-            <Ionicons name="alarm-outline" size={12} color={c.textMuted} />
+          <View style={[styles.optionRow, { alignItems: 'center' }]}>
+            <Ionicons name="alarm-outline" size={12} color={c.textMuted} style={{ marginTop: 1 }} />
             {priorityConfig.find((p) => p.value === priority)?.reminders.map((r) => {
               const selected = selectedReminderHours === r.hours;
               return (

@@ -11,6 +11,8 @@ import { seedIfEmpty } from '@/src/services/seed';
 import { useUIStore } from '@/src/store/ui-store';
 import { useSyncStore } from '@/src/store/sync-store';
 import { NudgeToast } from '@/src/components/common/NudgeToast';
+import { requestNotificationPermissions, configureNotifications } from '@/src/services/notifications';
+import { loadApiKey } from '@/src/services/ai-service';
 import 'react-native-reanimated';
 
 export { ErrorBoundary } from 'expo-router';
@@ -28,9 +30,13 @@ export default function RootLayout() {
   const initAuth = useSyncStore((s) => s.initAuth);
 
   useEffect(() => {
+    configureNotifications();
+
     initDatabase()
       .then(() => seedIfEmpty())
       .then(() => initAuth())
+      .then(() => loadApiKey())
+      .then(() => requestNotificationPermissions())
       .then(() => SplashScreen.hideAsync())
       .then(() => setDbReady(true))
       .then(() => new Promise((r) => setTimeout(r, 1500)))

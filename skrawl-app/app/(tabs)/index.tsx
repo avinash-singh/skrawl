@@ -439,40 +439,95 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* Expanded — show relevant notes with quick actions */}
+            {/* Expanded — inline priority + reminder controls per note */}
             {aiBannerExpanded && insightNotes.length > 0 && (
               <View style={[styles.aiExpanded, { borderTopColor: `${aiInsight.iconColor}20`, zIndex: 1 }]}>
-                {insightNotes.map((note) => (
-                  <View key={note.id} style={[styles.aiNoteRow, { borderColor: c.border }]}>
-                    <Pressable style={{ flex: 1 }} onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}>
-                      <Text style={[{ fontSize: 13, fontWeight: '600', color: c.text }]} numberOfLines={1}>{note.title || 'Untitled'}</Text>
-                      {note.priority !== null && (
-                        <Text style={[{ fontSize: 10, color: colors.priority[note.priority], fontWeight: '700' }]}>P{note.priority}</Text>
-                      )}
-                    </Pressable>
-                    {/* Quick actions based on insight type */}
-                    {aiInsight.type === 'p0-overload' && (
-                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${aiInsight.iconColor}40` }]} onPress={() => { const n = getNoteById(note.id); if (n) updateNote({ ...n, priority: 1 }); }}>
-                        <Text style={[{ fontSize: 10, fontWeight: '700', color: aiInsight.iconColor }]}>→ P1</Text>
+                {insightNotes.map((note) => {
+                  const noteReminder = reminders.find((r) => r.noteId === note.id);
+                  return (
+                    <View key={note.id} style={[styles.aiNoteCard, { backgroundColor: c.bgCard, borderColor: c.border }]}>
+                      {/* Note title + open */}
+                      <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }} onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}>
+                        <Text style={[{ fontSize: 13, fontWeight: '600', color: c.text, flex: 1 }]} numberOfLines={1}>{note.title || 'Untitled'}</Text>
+                        <Ionicons name="open-outline" size={12} color={c.textMuted} />
                       </Pressable>
-                    )}
-                    {aiInsight.type === 'overdue' && (
-                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${c.accent3}40` }]} onPress={() => { toggleDone(note.id); onNoteCompleted(vibeValue); }}>
-                        <Ionicons name="checkmark" size={12} color={c.accent3} />
-                      </Pressable>
-                    )}
-                    {aiInsight.type === 'stale' && (
-                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${c.danger}40` }]} onPress={() => { deleteNote(note.id); onNoteDeleted(vibeValue); }}>
-                        <Ionicons name="archive-outline" size={12} color={c.danger} />
-                      </Pressable>
-                    )}
-                    {(aiInsight.type === 'unorganized' || aiInsight.type === 'focus' || aiInsight.type === 'due-soon') && (
-                      <Pressable style={[styles.aiQuickBtn, { borderColor: `${aiInsight.iconColor}40` }]} onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}>
-                        <Ionicons name="open-outline" size={12} color={aiInsight.iconColor} />
-                      </Pressable>
-                    )}
-                  </View>
-                ))}
+
+                      {/* Priority row */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                        <Ionicons name="flag-outline" size={11} color={c.textMuted} />
+                        {[0, 1, 2].map((p) => {
+                          const pc = colors.priority[p as 0 | 1 | 2];
+                          const sel = note.priority === p;
+                          return (
+                            <Pressable
+                              key={p}
+                              style={[styles.aiPriBtn, { borderColor: sel ? pc : c.border, backgroundColor: sel ? `${pc}22` : 'transparent' }]}
+                              onPress={() => { const n = getNoteById(note.id); if (n) updateNote({ ...n, priority: p as any }); }}
+                            >
+                              <Text style={[{ fontSize: 10, fontWeight: '700', color: sel ? pc : c.textDim }]}>P{p}</Text>
+                            </Pressable>
+                          );
+                        })}
+                        {note.priority !== null && (
+                          <Pressable onPress={() => { const n = getNoteById(note.id); if (n) updateNote({ ...n, priority: null as any }); }}>
+                            <Ionicons name="close-circle-outline" size={14} color={c.textMuted} />
+                          </Pressable>
+                        )}
+                      </View>
+
+                      {/* Reminder row */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="alarm-outline" size={11} color={c.textMuted} />
+                        {noteReminder ? (
+                          <>
+                            <Text style={[{ fontSize: 10, color: c.accent, fontWeight: '600' }]}>
+                              {new Date(noteReminder.remindAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </Text>
+                            <Pressable
+                              style={[styles.aiPriBtn, { borderColor: c.border }]}
+                              onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}
+                            >
+                              <Text style={[{ fontSize: 10, fontWeight: '600', color: c.textDim }]}>Change</Text>
+                            </Pressable>
+                          </>
+                        ) : (
+                          <>
+                            {[{ label: '+1d', hours: 24 }, { label: '+3d', hours: 72 }, { label: '+1w', hours: 168 }].map((r) => (
+                              <Pressable
+                                key={r.label}
+                                style={[styles.aiPriBtn, { borderColor: c.border }]}
+                                onPress={async () => {
+                                  const addReminder = useReminderStore.getState().addReminder;
+                                  await addReminder({
+                                    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                                    noteId: note.id,
+                                    remindAt: new Date(Date.now() + r.hours * 60 * 60 * 1000).toISOString(),
+                                    calendarEventId: null,
+                                    status: 'pending',
+                                    aiSuggested: false,
+                                    autoSet: false,
+                                    createdAt: new Date().toISOString(),
+                                    isDirty: true,
+                                  }, note.title);
+                                }}
+                              >
+                                <Text style={[{ fontSize: 10, fontWeight: '600', color: c.textDim }]}>{r.label}</Text>
+                              </Pressable>
+                            ))}
+                          </>
+                        )}
+                        {/* Done button */}
+                        <Pressable
+                          style={[styles.aiPriBtn, { borderColor: `${c.accent3}40`, marginLeft: 'auto' }]}
+                          onPress={() => { toggleDone(note.id); onNoteCompleted(vibeValue); }}
+                        >
+                          <Ionicons name="checkmark" size={10} color={c.accent3} />
+                          <Text style={[{ fontSize: 10, fontWeight: '700', color: c.accent3 }]}>Done</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </Pressable>
@@ -621,9 +676,9 @@ const styles = StyleSheet.create({
   aiBannerGlow: { position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: 50, opacity: 0.08 },
   aiBannerText: { fontSize: 13, fontWeight: '600', lineHeight: 18, letterSpacing: -0.1 },
   aiBannerIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  aiExpanded: { borderTopWidth: 1, paddingTop: 10, marginTop: 8, gap: 6 },
-  aiNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: StyleSheet.hairlineWidth },
-  aiQuickBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.full, borderWidth: 1 },
+  aiExpanded: { borderTopWidth: 1, paddingTop: 10, marginTop: 8, gap: 8 },
+  aiNoteCard: { padding: 12, borderRadius: radii.md, borderWidth: 1 },
+  aiPriBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.full, borderWidth: 1 },
   // Multi-select
   multiBar: { position: 'absolute', bottom: 100, left: 12, right: 12, borderRadius: radii.lg, borderWidth: 1, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 60 },
   multiBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.full },

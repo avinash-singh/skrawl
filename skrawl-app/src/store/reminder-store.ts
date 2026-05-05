@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Reminder } from '@/src/models';
 import * as db from '@/src/services/database';
 import { createCalendarEvent, deleteCalendarEvent } from '@/src/services/calendar-sync';
+import { scheduleReminder as scheduleNotif, cancelNotification } from '@/src/services/notifications';
 
 interface ReminderState {
   reminders: Reminder[];
@@ -44,6 +45,9 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
       'INSERT INTO reminders (id, note_id, remind_at, status, ai_suggested, auto_set) VALUES (?, ?, ?, ?, ?, ?)',
       [reminder.id, reminder.noteId, reminder.remindAt, reminder.status, reminder.aiSuggested ? 1 : 0, reminder.autoSet ? 1 : 0]
     );
+
+    // Schedule local notification
+    await scheduleNotif(reminder.noteId, noteTitle || 'Reminder', new Date(reminder.remindAt));
 
     // Create calendar event
     const eventId = await createCalendarEvent(

@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Share, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeColors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore, type SwipeAction, type ReminderIntensity } from '@/src/store/ui-store';
+import { useNudgeStore } from '@/src/store/nudge-store';
 import { useSyncStore } from '@/src/store/sync-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Updates from 'expo-updates';
-import { setApiKey as saveApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey } from '@/src/services/ai-service';
+import { scheduleReminder as testNotif } from '@/src/services/notifications';
+import { setApiKey as saveApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey, getApiKey } from '@/src/services/ai-service';
 import type { NoteType } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-const swipeOptions: { value: SwipeAction; label: string }[] = [
+const swipeLeftOptions: { value: SwipeAction; label: string }[] = [
   { value: 'done', label: 'Done' },
   { value: 'pin', label: 'Pin' },
   { value: 'delete', label: 'Delete' },
+  { value: 'archive', label: 'Archive' },
+];
+
+const swipeRightOptions: { value: SwipeAction; label: string }[] = [
+  { value: 'priority', label: 'Priority' },
+  { value: 'done', label: 'Done' },
+  { value: 'pin', label: 'Pin' },
   { value: 'archive', label: 'Archive' },
 ];
 
@@ -36,6 +45,7 @@ export default function SettingsScreen() {
   const setSwipeRight = useUIStore((s) => s.setSwipeRight);
   const reminderIntensity = useUIStore((s) => s.reminderIntensity);
   const setReminderIntensity = useUIStore((s) => s.setReminderIntensity);
+  const nudgeShow = useNudgeStore((s) => s.show);
   const { status: syncStatus, isSignedIn, user, sync, signInWithEmail, signUpWithEmail, signInWithGoogle, signOut } = useSyncStore();
 
   // Setting toggles
@@ -53,6 +63,8 @@ export default function SettingsScreen() {
   const [calSyncing, setCalSyncing] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [aiConnected, setAiConnected] = useState(isAiConfigured());
+  // Re-check on mount in case key was loaded from storage
+  useEffect(() => { setAiConnected(isAiConfigured()); }, []);
   const [verifying, setVerifying] = useState(false);
   const [authMode, setAuthMode] = useState<'none' | 'sso' | 'key'>('none');
   const [signInMode, setSignInMode] = useState<'none' | 'signin' | 'signup'>('none');
@@ -80,7 +92,7 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Appearance */}
         <Group label="APPEARANCE" c={c}>
-          <Row c={c} iconBg="#7C6AFF" icon="moon" label="Dark Mode" right={<Toggle on={theme === 'dark'} onPress={toggleTheme} />} />
+          <Row c={c} iconBg="#7C6AFF" icon="moon" label="Dark Mode" right={<Toggle on={theme === 'dark'} onPress={() => { toggleTheme(); nudgeShow(theme === 'dark' ? 'Switched to light mode' : 'Switched to dark mode'); }} />} />
         </Group>
 
         {/* Default Mode */}
@@ -90,7 +102,7 @@ export default function SettingsScreen() {
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>New item starts as</Text>
             <View style={styles.chipRow}>
               {defaultModes.map((m) => (
-                <Pressable key={m.value} style={[styles.chip, { borderColor: defaultMode === m.value ? c.accent : c.border }, defaultMode === m.value && { backgroundColor: c.accentGlow }]} onPress={() => setDefaultMode(m.value)}>
+                <Pressable key={m.value} style={[styles.chip, { borderColor: defaultMode === m.value ? c.accent : c.border }, defaultMode === m.value && { backgroundColor: c.accentGlow }]} onPress={() => { setDefaultMode(m.value); nudgeShow(`Default: ${m.label}`); }}>
                   <Text style={[{ fontSize: 11, fontWeight: '600', color: defaultMode === m.value ? c.accent : c.textDim }]}>{m.label}</Text>
                 </Pressable>
               ))}
@@ -104,8 +116,8 @@ export default function SettingsScreen() {
             <View style={[styles.rowIcon, { backgroundColor: '#FFB86A' }]}><Ionicons name="arrow-back" size={16} color="#fff" /></View>
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>Left swipe</Text>
             <View style={styles.chipRow}>
-              {swipeOptions.map((a) => (
-                <Pressable key={a.value} style={[styles.chip, { borderColor: swipeLeftAction === a.value ? c.accent : c.border }, swipeLeftAction === a.value && { backgroundColor: c.accentGlow }]} onPress={() => setSwipeLeft(a.value)}>
+              {swipeLeftOptions.map((a) => (
+                <Pressable key={a.value} style={[styles.chip, { borderColor: swipeLeftAction === a.value ? c.accent : c.border }, swipeLeftAction === a.value && { backgroundColor: c.accentGlow }]} onPress={() => { setSwipeLeft(a.value); nudgeShow(`Left swipe: ${a.label}`); }}>
                   <Text style={[{ fontSize: 11, fontWeight: '600', color: swipeLeftAction === a.value ? c.accent : c.textDim }]}>{a.label}</Text>
                 </Pressable>
               ))}
@@ -115,8 +127,8 @@ export default function SettingsScreen() {
             <View style={[styles.rowIcon, { backgroundColor: '#6AFFCB' }]}><Ionicons name="arrow-forward" size={16} color="#fff" /></View>
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>Right swipe</Text>
             <View style={styles.chipRow}>
-              {swipeOptions.map((a) => (
-                <Pressable key={a.value} style={[styles.chip, { borderColor: swipeRightAction === a.value ? c.accent : c.border }, swipeRightAction === a.value && { backgroundColor: c.accentGlow }]} onPress={() => setSwipeRight(a.value)}>
+              {swipeRightOptions.map((a) => (
+                <Pressable key={a.value} style={[styles.chip, { borderColor: swipeRightAction === a.value ? c.accent : c.border }, swipeRightAction === a.value && { backgroundColor: c.accentGlow }]} onPress={() => { setSwipeRight(a.value); nudgeShow(`Right swipe: ${a.label}`); }}>
                   <Text style={[{ fontSize: 11, fontWeight: '600', color: swipeRightAction === a.value ? c.accent : c.textDim }]}>{a.label}</Text>
                 </Pressable>
               ))}
@@ -175,7 +187,7 @@ export default function SettingsScreen() {
                     const active = vibeValue === z.v;
                     const passed = vibeValue >= z.v;
                     return (
-                      <Pressable key={z.v} style={vibeStyles.zone} onPress={() => setVibeValue(z.v)}>
+                      <Pressable key={z.v} style={vibeStyles.zone} onPress={() => { setVibeValue(z.v); nudgeShow(`Personality: ${z.label}`); }}>
                         <View style={[
                           vibeStyles.zoneDot,
                           { backgroundColor: passed ? `${z.color}18` : 'rgba(255,255,255,0.04)', borderColor: active ? z.color : 'transparent' },
@@ -270,7 +282,7 @@ export default function SettingsScreen() {
                         reminderCardStyles.card,
                         { borderColor: sel ? mode.color : c.border, backgroundColor: sel ? `${mode.color}10` : 'transparent' },
                       ]}
-                      onPress={() => setReminderIntensity(mode.value)}
+                      onPress={() => { setReminderIntensity(mode.value); nudgeShow(`Reminders: ${mode.title}`); }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <View style={[reminderCardStyles.iconCircle, { backgroundColor: sel ? `${mode.color}25` : c.bgInput }]}>
@@ -301,7 +313,18 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <Group label="NOTIFICATIONS" c={c}>
-          <Row c={c} iconBg="#FF5A5A" icon="notifications" label="Push Notifications" right={<Toggle on={pushEnabled} onPress={() => setPushEnabled(!pushEnabled)} />} border />
+          <Row c={c} iconBg="#FF5A5A" icon="notifications" label="Push Notifications" right={<Toggle on={pushEnabled} onPress={() => { setPushEnabled(!pushEnabled); nudgeShow(pushEnabled ? 'Notifications off' : 'Notifications on'); }} />} border />
+          <Pressable
+            style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
+            onPress={async () => {
+              await testNotif('test', 'This is a test notification from Skrawl!', new Date(Date.now() + 3000));
+              nudgeShow('Test notification in 3 seconds...');
+            }}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: '#B06AFF' }]}><Ionicons name="paper-plane-outline" size={16} color="#fff" /></View>
+            <Text style={[typography.body, { color: c.text, flex: 1 }]}>Test Notification</Text>
+            <Text style={[typography.caption, { color: c.textMuted }]}>Fires in 3s</Text>
+          </Pressable>
           <Pressable style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]} onPress={() => router.push('/notifications')}>
             <View style={[styles.rowIcon, { backgroundColor: '#FFB86A' }]}><Ionicons name="mail-outline" size={16} color="#fff" /></View>
             <Text style={[typography.body, { color: c.text, flex: 1 }]}>Notification Center</Text>
@@ -333,7 +356,7 @@ export default function SettingsScreen() {
               </Text>
             </View>
             {aiConnected ? (
-              <Pressable onPress={() => { clearAiKey(); setAiConnected(false); setApiToken(''); }}>
+              <Pressable onPress={async () => { await clearAiKey(); setAiConnected(false); setApiToken(''); }}>
                 <Text style={[{ fontSize: 12, fontWeight: '600', color: c.danger }]}>Disconnect</Text>
               </Pressable>
             ) : (
@@ -417,7 +440,7 @@ export default function SettingsScreen() {
                     const valid = await verifyApiKey(apiToken.trim());
                     setVerifying(false);
                     if (valid) {
-                      saveApiKey(apiToken.trim());
+                      await saveApiKey(apiToken.trim());
                       setAiConnected(true);
                       setEditingToken(false);
                       setAuthMode('none');
@@ -432,7 +455,7 @@ export default function SettingsScreen() {
             </View>
           )}
 
-          <Row c={c} iconBg="#FF6AC2" icon="sparkles" label="AI Reminders" right={<Toggle on={aiReminders} onPress={() => setAiReminders(!aiReminders)} />} border />
+          <Row c={c} iconBg="#FF6AC2" icon="sparkles" label={`AI Reminders${!aiConnected ? ' (connect AI)' : ''}`} right={<Toggle on={aiReminders && aiConnected} onPress={() => { if (aiConnected) { setAiReminders(!aiReminders); nudgeShow(aiReminders ? 'AI Reminders off' : 'AI Reminders on'); } else { nudgeShow('Connect OpenAI first'); } }} />} border />
           <Row c={c} iconBg="#6AFFCB" icon="mic" label="Voice Commands" right={<Toggle on={voiceCommands} onPress={() => setVoiceCommands(!voiceCommands)} />} />
         </Group>
 
@@ -605,7 +628,7 @@ export default function SettingsScreen() {
         </Group>
 
         <View style={{ alignItems: 'center', paddingVertical: 24, gap: 10 }}>
-          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.0.6</Text>
+          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.1.2</Text>
           <Pressable
             onPress={async () => {
               try {

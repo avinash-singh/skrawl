@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useThemeColors, typography, spacing, radii } from '@/src/theme';
@@ -115,6 +115,11 @@ export function VoiceInput({ visible, onClose, onCreated }: Props) {
   if (!visible) return null;
 
   return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.keyboardWrap}
+      keyboardVerticalOffset={0}
+    >
     <Animated.View
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(150)}
@@ -204,15 +209,21 @@ export function VoiceInput({ visible, onClose, onCreated }: Props) {
         </Pressable>
       </View>
     </Animated.View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboardWrap: {
     position: 'absolute',
-    bottom: 24,
-    left: 16,
-    right: 16,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+  },
+  container: {
+    marginBottom: 24,
+    marginHorizontal: 16,
     borderRadius: radii.lg,
     borderWidth: 1,
     padding: 20,
