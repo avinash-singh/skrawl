@@ -62,6 +62,7 @@ export default function RootLayout() {
         <Text style={loadStyles.tagline}>Notes, tasks & reminders</Text>
         <ActivityIndicator size="small" color="#7C6AFF" style={{ marginTop: 24 }} />
         <Text style={loadStyles.quote}>"{quote}"</Text>
+        <Text style={loadStyles.version}>v1.4.0</Text>
       </View>
     );
   }
@@ -111,5 +112,11 @@ const loadStyles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 32,
     lineHeight: 20,
+  },
+  version: {
+    fontSize: 11,
+    color: '#55556A',
+    position: 'absolute',
+    bottom: 40,
   },
 });

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
+import { isConfigured as isAiConfigured, suggestFolderOrganization } from '@/src/services/ai-service';
 import { useUIStore } from '@/src/store/ui-store';
 import { useFolderStore } from '@/src/store/folder-store';
 import { useNoteStore } from '@/src/store/note-store';
@@ -32,9 +33,12 @@ export function FolderDrawer({ visible, onClose }: Props) {
   const updateNote = useNoteStore((s) => s.updateNote);
   const notes = useNoteStore((s) => s.notes);
   const pushUndo = useUndoStore((s) => s.push);
+  const vibeValue = useUIStore((s) => s.vibeValue);
 
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [newName, setNewName] = useState('');
+  const [aiCategorizing, setAiCategorizing] = useState(false);
+  const [aiResults, setAiResults] = useState<{ noteId: string; noteTitle: string; folderName: string; isNew: boolean }[]>([]);
   const [newColor, setNewColor] = useState<string | null>(null);
   const [newParentId, setNewParentId] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -230,12 +234,93 @@ export function FolderDrawer({ visible, onClose }: Props) {
           {/* Folder tree */}
           {topLevel.map((folder) => renderFolderRow(folder))}
 
-          {/* Create folder button */}
+          {/* Action buttons */}
           {!moveMode && (
-            <Pressable style={styles.createBtn} onPress={() => openCreateEditor()}>
-              <Ionicons name="add-circle-outline" size={20} color={c.accent} />
-              <Text style={[typography.label, { color: c.accent }]}>New Folder</Text>
-            </Pressable>
+            <View style={{ gap: 4, marginTop: 8 }}>
+              <Pressable style={styles.createBtn} onPress={() => openCreateEditor()}>
+                <Ionicons name="add-circle-outline" size={20} color={c.accent} />
+                <Text style={[typography.label, { color: c.accent }]}>New Folder</Text>
+              </Pressable>
+
+              {isAiConfigured() && (
+                <Pressable
+                  style={styles.createBtn}
+                  onPress={async () => {
+                    const unfiled = notes.filter((n) => !n.isDone && !n.folderId);
+                    if (unfiled.length < 2) { setAiResults([]); return; }
+                    setAiCategorizing(true);
+                    const result = await suggestFolderOrganization(
+                      unfiled.map((n) => ({ id: n.id, title: n.title, folderId: n.folderId })),
+                      folders.map((f) => ({ id: f.id, name: f.name })),
+                      vibeValue,
+                    );
+                    setAiCategorizing(false);
+                    if (result?.suggestions?.length) {
+                      setAiResults(result.suggestions);
+                    } else {
+                      setAiResults([]);
+                    }
+                  }}
+                >
+                  <Ionicons name="sparkles" size={18} color={c.accent2} />
+                  <Text style={[typography.label, { color: c.accent2 }]}>
+                    {aiCategorizing ? 'Analyzing...' : 'AI Categorize'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* AI categorization results */}
+          {aiResults.length > 0 && (
+            <View style={{ paddingHorizontal: 12, paddingTop: 12, gap: 6 }}>
+              <Text style={[typography.sectionHeader, { color: c.textMuted, paddingHorizontal: 4 }]}>AI SUGGESTIONS</Text>
+              {aiResults.map((s, i) => (
+                <Pressable
+                  key={`${s.noteId}-${i}`}
+                  style={[styles.folderRow, { backgroundColor: c.bgCard, borderRadius: radii.sm, gap: 8 }]}
+                  onPress={async () => {
+                    const existing = folders.find((f) => f.name.toLowerCase() === s.folderName.toLowerCase());
+                    let targetId = existing?.id || null;
+
+                    if (s.isNew && !existing) {
+                      const newFolder: Folder = {
+                        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                        name: s.folderName,
+                        context,
+                        parentId: null,
+                        icon: 'folder',
+                        color: '#7C6AFF',
+                        sort: folders.length,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        isDirty: true,
+                      };
+                      await addFolder(newFolder);
+                      targetId = newFolder.id;
+                    }
+
+                    if (targetId) {
+                      const note = notes.find((n) => n.id === s.noteId);
+                      if (note) await updateNote({ ...note, folderId: targetId });
+                    }
+                    setAiResults((prev) => prev.filter((x) => x.noteId !== s.noteId));
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[{ fontSize: 13, fontWeight: '500', color: c.text }]} numberOfLines={1}>{s.noteTitle}</Text>
+                  </View>
+                  <Ionicons name="arrow-forward" size={12} color={c.textMuted} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.full, borderWidth: 1, borderColor: s.isNew ? c.accent2 : c.accent, backgroundColor: s.isNew ? `${c.accent2}15` : c.accentGlow }}>
+                    <Ionicons name={s.isNew ? 'add-circle-outline' : 'folder'} size={11} color={s.isNew ? c.accent2 : c.accent} />
+                    <Text style={[{ fontSize: 11, fontWeight: '600', color: s.isNew ? c.accent2 : c.accent }]}>{s.folderName}</Text>
+                  </View>
+                </Pressable>
+              ))}
+              <Pressable onPress={() => setAiResults([])} style={{ alignSelf: 'center', paddingVertical: 8 }}>
+                <Text style={[{ fontSize: 12, color: c.textMuted }]}>Dismiss</Text>
+              </Pressable>
+            </View>
           )}
         </ScrollView>
 

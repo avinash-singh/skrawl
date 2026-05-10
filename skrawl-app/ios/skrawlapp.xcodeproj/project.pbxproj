@@ -14,6 +14,7 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		FD41A9297B97B75455B5B72A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 306AD161E96B6FB368CB38A3 /* PrivacyInfo.xcprivacy */; };
+		SMILE002 /* smile.wav in Resources */ = {isa = PBXBuildFile; fileRef = SMILE001 /* smile.wav */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = skrawlapp/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* skrawlapp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "skrawlapp-Bridging-Header.h"; path = "skrawlapp/skrawlapp-Bridging-Header.h"; sourceTree = "<group>"; };
+		SMILE001 /* smile.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = smile.wav; path = skrawlapp/smile.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +195,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				SMILE002 /* smile.wav in Resources */,
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
@@ -200,7 +203,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXResourcesBuildPhase section */
+
 
 /* Begin PBXShellScriptBuildPhase section */
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
@@ -554,3 +557,5 @@
 	};
 	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
 }
+
+/* End PBXResourcesBuildPhase section */

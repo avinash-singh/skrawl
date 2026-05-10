@@ -88,6 +88,14 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   deleteNote: async (id) => {
+    // Clean up reminders and their calendar events + notifications
+    try {
+      const { reminders, dismissReminder } = await import('@/src/store/reminder-store').then(m => m.useReminderStore.getState());
+      const noteReminders = reminders.filter((r) => r.noteId === id);
+      for (const r of noteReminders) {
+        await dismissReminder(r.id);
+      }
+    } catch {}
     await db.softDeleteNote(id);
     set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
   },

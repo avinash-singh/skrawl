@@ -8,6 +8,7 @@ import { useFolderStore } from '@/src/store/folder-store';
 import { useReminderStore } from '@/src/store/reminder-store';
 import { useNudgeStore } from '@/src/store/nudge-store';
 import { parseNaturalLanguage, suggestPriorityFromDueDate } from '@/src/services/nl-parser';
+import { isConfigured as isAiConfigured, suggestCategorization } from '@/src/services/ai-service';
 import type { NoteType, Context, Reminder } from '@/src/models';
 import type { PriorityLevel, NoteColor } from '@/src/theme/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -125,7 +126,26 @@ export function QuickCapture({ visible, onClose, onOpenDetail }: Props) {
     setNlSuggestion(null);
     setSelectedReminderHours(null);
     onClose();
-    onNoteCreated(vibeValue);
+    onNoteCreated(vibeValue, parsed.title || trimmed);
+
+    // AI: suggest folder + priority in background
+    if (isAiConfigured() && !priority) {
+      const updateNote = useNoteStore.getState().updateNote;
+      const getNoteById = useNoteStore.getState().getNoteById;
+      suggestCategorization(parsed.title || trimmed, folders.map((f) => ({ id: f.id, name: f.name })), vibeValue)
+        .then((suggestion) => {
+          if (suggestion) {
+            const current = getNoteById(note.id);
+            if (current) {
+              updateNote({
+                ...current,
+                ...(suggestion.folderId && !current.folderId ? { folderId: suggestion.folderId } : {}),
+                ...(suggestion.priority !== null && current.priority === null ? { priority: suggestion.priority as any } : {}),
+              });
+            }
+          }
+        });
+    }
   };
 
   const handleOpenDetail = async () => {

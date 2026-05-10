@@ -63,7 +63,7 @@ export function RowItem({ note, index, onPress, onLongPress }: Props) {
 
   const handleCheckbox = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (!n.isDone) onNoteCompleted(vibeValue);
+    if (!n.isDone) onNoteCompleted(vibeValue, n.title);
     toggleDone(n.id);
   };
 

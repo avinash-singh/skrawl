@@ -64,6 +64,7 @@ export const useUIStore = create<UIState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         theme: state.theme,
+        context: state.context,
         sortBy: state.sortBy,
         defaultMode: state.defaultMode,
         swipeLeftAction: state.swipeLeftAction,

@@ -12,7 +12,7 @@ import { useReminderStore } from '@/src/store/reminder-store';
 import { useNudgeStore } from '@/src/store/nudge-store';
 import { useUIStore } from '@/src/store/ui-store';
 import { autoTitle, suggestReminderForPriority, suggestPriorityFromDueDate } from '@/src/services/nl-parser';
-import { isConfigured as isAiConfigured, processVoiceInput } from '@/src/services/ai-service';
+import { isConfigured as isAiConfigured, processVoiceInput, generateTitle as aiGenerateTitle } from '@/src/services/ai-service';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface Props {
@@ -75,26 +75,32 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
     }
   }, [noteId]);
 
-  // Auto-save on dismiss
+  // Auto-save on dismiss — only if changes were made
   const handleDismiss = useCallback(() => {
     const note = noteRef.current;
     if (note) {
-      const updated: Note = {
-        ...note,
-        title,
-        body,
-        type: noteType,
-        priority,
-        color,
-        folderId,
-        items,
-        images: noteImages,
-        isPinned,
-        updatedAt: new Date().toISOString(),
-        isDirty: true,
-      };
-      updateNote(updated);
-      onNoteSaved(vibeValue);
+      const hasChanges = title !== note.title || body !== note.body || noteType !== note.type ||
+        priority !== note.priority || color !== note.color || folderId !== note.folderId ||
+        isPinned !== note.isPinned || JSON.stringify(items) !== JSON.stringify(note.items) ||
+        JSON.stringify(noteImages) !== JSON.stringify(note.images);
+      if (hasChanges) {
+        const updated: Note = {
+          ...note,
+          title,
+          body,
+          type: noteType,
+          priority,
+          color,
+          folderId,
+          items,
+          images: noteImages,
+          isPinned,
+          updatedAt: new Date().toISOString(),
+          isDirty: true,
+        };
+        updateNote(updated);
+        onNoteSaved(vibeValue, title);
+      }
     }
     noteRef.current = null;
     onDismiss();
@@ -158,12 +164,16 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
             multiline
           />
           {!title && body && body.length > 5 && (
-            <Pressable onPress={() => {
+            <Pressable onPress={async () => {
+              if (isAiConfigured()) {
+                const aiTitle = await aiGenerateTitle(body, vibeValue);
+                if (aiTitle) { setTitle(aiTitle); return; }
+              }
               const suggested = autoTitle(body);
               if (suggested) setTitle(suggested);
             }}>
-              <Text style={[typography.caption, { color: c.textMuted, paddingHorizontal: 4, marginTop: -6, marginBottom: 4, fontStyle: 'italic' }]} numberOfLines={1}>
-                Suggestion: {autoTitle(body) || ''}
+              <Text style={[typography.caption, { color: isAiConfigured() ? c.accent : c.textMuted, paddingHorizontal: 4, marginTop: -6, marginBottom: 4, fontStyle: 'italic' }]} numberOfLines={1}>
+                {isAiConfigured() ? '✨ Tap for AI title' : `Suggestion: ${autoTitle(body) || ''}`}
               </Text>
             </Pressable>
           )}
@@ -288,8 +298,8 @@ export function DetailSheet({ noteId, onDismiss }: Props) {
                 autoFocus
               />
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-              <Pressable onPress={() => { setMicActive(false); setMicText(''); }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 8 }}>
+              <Pressable style={{ paddingVertical: 8, paddingHorizontal: 4 }} onPress={() => { setMicActive(false); setMicText(''); }}>
                 <Text style={[{ fontSize: 13, fontWeight: '600', color: c.textDim }]}>Cancel</Text>
               </Pressable>
               <Pressable

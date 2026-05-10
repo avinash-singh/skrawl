@@ -60,7 +60,7 @@ export async function scheduleReminder(
         title: 'Skrawl Reminder',
         body: title || 'You have a reminder',
         data: { noteId },
-        sound: 'default',
+        sound: 'smile.wav',
       },
       trigger: secondsUntil <= 3
         ? null  // Fire immediately if less than 3 seconds
@@ -107,7 +107,7 @@ export async function scheduleDailyBriefing(
       content: {
         title: 'Skrawl',
         body: 'Check your tasks for today',
-        sound: true,
+        sound: 'smile.wav',
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,

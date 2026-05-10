@@ -11,6 +11,8 @@ import { useUndoStore } from '@/src/store/undo-store';
 import { useReminderStore } from '@/src/store/reminder-store';
 import { getQuote } from '@/src/services/nudges';
 import { useNudgeStore } from '@/src/store/nudge-store';
+import { isConfigured as isAiConfigured, generateGreeting, analyzeInsight, suggestFolderOrganization } from '@/src/services/ai-service';
+import { runReminderScheduler } from '@/src/services/reminder-scheduler';
 import { RowItem } from '@/src/components/list/RowItem';
 import { SwipeableRow } from '@/src/components/list/SwipeableRow';
 import { ContextToggle } from '@/src/components/common/ContextToggle';
@@ -84,6 +86,10 @@ export default function HomeScreen() {
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [aiBannerExpanded, setAiBannerExpanded] = useState(false);
+  const [aiGreeting, setAiGreeting] = useState<string | null>(null);
+  const [aiInsightOverride, setAiInsightOverride] = useState<{ noteId: string; reason: string; action: string } | null>(null);
+  const [folderSuggestions, setFolderSuggestions] = useState<{ noteId: string; noteTitle: string; folderName: string; isNew: boolean }[]>([]);
+  const reminderIntensity = useUIStore((s) => s.reminderIntensity);
 
   const updateNote = useNoteStore((s) => s.updateNote);
   const getNoteById = useNoteStore((s) => s.getNoteById);
@@ -94,6 +100,62 @@ export default function HomeScreen() {
     loadFolders(context);
     loadReminders();
   }, [context]);
+
+  // AI greeting + insight + reminder scheduler (runs after notes load)
+  useEffect(() => {
+    const active = notes.filter((n) => !n.isDone && !n.deletedAt);
+    if (active.length === 0) return;
+
+    // AI greeting
+    if (isAiConfigured()) {
+      const hour = new Date().getHours();
+      const tod = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+      const urgent = active.filter((n) => n.priority !== null && n.priority <= 1);
+      generateGreeting('Avinash', active.length, urgent.length, tod, vibeValue)
+        .then((g) => { if (g) setAiGreeting(g); });
+
+      // AI insight analysis
+      const noteIds = new Set(notes.map((n) => n.id));
+      const ctxReminders = reminders.filter((r) => noteIds.has(r.noteId));
+      const enriched = active.map((n) => {
+        const rem = ctxReminders.find((r) => r.noteId === n.id);
+        const remDate = rem ? new Date(rem.remindAt) : null;
+        return {
+          id: n.id, title: n.title, priority: n.priority, isDone: n.isDone,
+          reminderDate: rem?.remindAt || null,
+          isOverdue: remDate ? remDate < new Date() : false,
+          daysUntilDue: remDate ? Math.round((remDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
+        };
+      });
+      analyzeInsight(enriched, vibeValue).then((result) => {
+        if (result) setAiInsightOverride(result);
+      });
+
+      // AI folder organization suggestions
+      const unfiled = active.filter((n) => !n.folderId);
+      if (unfiled.length >= 3) {
+        suggestFolderOrganization(
+          unfiled.map((n) => ({ id: n.id, title: n.title, folderId: n.folderId })),
+          folders.map((f) => ({ id: f.id, name: f.name })),
+          vibeValue,
+        ).then((result) => {
+          if (result?.suggestions?.length) setFolderSuggestions(result.suggestions);
+        });
+      }
+    }
+
+    // Run reminder scheduler based on intensity
+    const notesWithReminders = active
+      .map((n) => {
+        const rem = reminders.find((r) => r.noteId === n.id);
+        return rem ? { id: n.id, title: n.title, priority: n.priority, remindAt: rem.remindAt } : null;
+      })
+      .filter(Boolean) as { id: string; title: string; priority: number | null; remindAt: string }[];
+
+    if (notesWithReminders.length > 0) {
+      runReminderScheduler(notesWithReminders, reminderIntensity);
+    }
+  }, [notes.length, reminders.length]);
 
   const { pinned, rest, done } = useMemo(() => {
     const filtered = currentFolder
@@ -128,12 +190,12 @@ export default function HomeScreen() {
   // AI insight — smart, contextual, interactive
   const aiInsight = useMemo(() => {
     // Only use notes in the current context that aren't deleted
-    const noteIds = new Set(notes.map((n) => n.id));
     const active = notes.filter((n) => !n.isDone && !n.deletedAt);
+    const activeIds = new Set(active.map((n) => n.id));
     const p0s = active.filter((n) => n.priority === 0);
     const p1s = active.filter((n) => n.priority === 1);
-    // Only use reminders that belong to notes in the current context
-    const contextReminders = reminders.filter((r) => noteIds.has(r.noteId));
+    // Only use reminders for active (not done) notes in current context
+    const contextReminders = reminders.filter((r) => activeIds.has(r.noteId));
     const overdue = contextReminders.filter((r) => new Date(r.remindAt) < new Date());
     const noPriority = active.filter((n) => n.priority === null);
     const stale = active.filter((n) => {
@@ -141,7 +203,24 @@ export default function HomeScreen() {
       return age > 3 * 24 * 60 * 60 * 1000; // 3+ days old
     });
 
-    // Priority: too many P0s
+    // 1. OVERDUE — most critical, always show first
+    if (overdue.length > 0) {
+      const overdueNotes = overdue.map((r) => notes.find((n) => n.id === r.noteId)).filter(Boolean);
+      const overdueNote = overdueNotes[0];
+      return {
+        type: 'overdue' as const,
+        icon: 'alert-circle' as const,
+        iconColor: '#FF5A5A',
+        text: `${overdue.length} overdue${overdue.length > 1 ? ` (${overdue.length} items)` : ''} — "${overdueNote?.title || 'Untitled'}"`,
+        subtext: 'These need attention now',
+        actions: overdue.slice(0, 3).map((r) => {
+          const n = notes.find((x) => x.id === r.noteId);
+          return { id: r.noteId, title: n?.title || 'Untitled', label: 'Fix' };
+        }),
+      };
+    }
+
+    // 2. P0 OVERLOAD
     if (p0s.length >= 5) {
       return {
         type: 'p0-overload' as const,
@@ -153,14 +232,14 @@ export default function HomeScreen() {
       };
     }
 
-    // Due soon — suggest upgrading to P0
+    // 3. DUE SOON — suggest upgrading to P0
     const now = new Date();
     const twoDays = 2 * 24 * 60 * 60 * 1000;
     const dueSoon = contextReminders
       .filter((r) => {
         const remindTime = new Date(r.remindAt).getTime();
         const delta = remindTime - now.getTime();
-        return delta > 0 && delta < twoDays; // due within 2 days
+        return delta > 0 && delta < twoDays;
       })
       .map((r) => {
         const note = active.find((n) => n.id === r.noteId);
@@ -173,16 +252,16 @@ export default function HomeScreen() {
         const mins = Math.round(ms / 60000);
         if (mins < 60) return `${mins}m`;
         const hrs = Math.floor(mins / 60);
-        if (hrs < 24) return `${hrs}h ${mins % 60}m`;
+        if (hrs < 24) return `${hrs}h`;
         const days = Math.floor(hrs / 24);
-        return days === 1 ? `1 day` : `${days} days`;
+        return days === 1 ? '1 day' : `${days} days`;
       };
       return {
         type: 'due-soon' as const,
         icon: 'trending-up' as const,
         iconColor: '#FF6AC2',
-        text: `"${dueSoon[0].note.title}" is due in ${timeLeft(new Date(dueSoon[0].reminder.remindAt).getTime() - now.getTime())}`,
-        subtext: dueSoon[0].note.priority !== null ? `Currently P${dueSoon[0].note.priority} — upgrade to critical?` : 'No priority set — make it critical?',
+        text: `"${dueSoon[0].note.title}" due in ${timeLeft(new Date(dueSoon[0].reminder.remindAt).getTime() - now.getTime())}`,
+        subtext: dueSoon[0].note.priority !== null ? `Currently P${dueSoon[0].note.priority} — upgrade?` : 'No priority — make it critical?',
         actions: [
           ...dueSoon.slice(0, 2).map((d) => ({ id: d.note.id, title: d.note.title, label: 'Upgrade to P0' })),
           { id: dueSoon[0].note.id, title: '', label: 'Open' },
@@ -190,23 +269,7 @@ export default function HomeScreen() {
       };
     }
 
-    // Overdue reminders
-    if (overdue.length > 0) {
-      const overdueNote = notes.find((n) => n.id === overdue[0].noteId);
-      return {
-        type: 'overdue' as const,
-        icon: 'alarm' as const,
-        iconColor: '#FFB86A',
-        text: `${overdue.length} overdue reminder${overdue.length > 1 ? 's' : ''} — "${overdueNote?.title || 'Untitled'}"`,
-        subtext: 'Reschedule or mark done',
-        actions: [
-          { id: overdueNote?.id || '', title: 'Reschedule to tomorrow', label: 'Tomorrow' },
-          { id: overdueNote?.id || '', title: 'Mark as done', label: 'Done' },
-        ],
-      };
-    }
-
-    // Items without priority
+    // 4. Items without priority
     if (noPriority.length >= 3) {
       return {
         type: 'unorganized' as const,
@@ -243,29 +306,38 @@ export default function HomeScreen() {
       };
     }
 
-    // Active items but no special conditions
+    // Active items but nothing urgent — show encouraging message
     if (active.length > 0) {
-      const top = active[0];
+      const msgs = vibeValue <= 35
+        ? [`${active.length} things on the list. No fires. Life is good.`, `${active.length} items vibing. None screaming for attention.`, `Look at you — ${active.length} items, all under control.`]
+        : vibeValue <= 65
+        ? [`${active.length} items on track. Keep the momentum.`, `Everything's moving. ${active.length} items in play.`, `Steady progress — ${active.length} items, no blockers.`]
+        : [`${active.length} items queued. Execute in order.`, `Pipeline clear. ${active.length} items, zero blockers.`, `All systems go. ${active.length} in the queue.`];
       return {
-        type: 'focus' as const,
-        icon: 'list-outline' as const,
-        iconColor: c.accent,
-        text: `${active.length} item${active.length > 1 ? 's' : ''} — "${top.title}" is next`,
-        subtext: 'Tap to see your notes',
-        actions: [{ id: top.id, title: 'Open', label: 'Start' }],
+        type: 'calm' as const,
+        icon: 'shield-checkmark-outline' as const,
+        iconColor: '#6AB4FF',
+        text: msgs[Math.floor(Date.now() / 60000) % msgs.length],
+        subtext: 'Things are in control',
+        actions: [] as { id: string; title: string; label: string }[],
       };
     }
 
     // Truly all clear
+    const clearMsgs = vibeValue <= 35
+      ? ['Inbox zero. Time for a victory lap.', 'Nothing to do? Are you sure you\'re not dreaming?', 'Empty list. The fridge is calling.']
+      : vibeValue <= 65
+      ? ['All clear — nice work!', 'Inbox zero. Time to think big.', 'Clean slate. What\'s next?']
+      : ['All tasks eliminated. Mission complete.', 'Zero items. Peak efficiency achieved.', 'Inbox zero. Maintain discipline.'];
     return {
       type: 'clear' as const,
       icon: 'checkmark-circle-outline' as const,
       iconColor: '#6AFFCB',
-      text: 'All clear — inbox zero!',
+      text: clearMsgs[Math.floor(Date.now() / 60000) % clearMsgs.length],
       subtext: 'Great time to capture new ideas',
       actions: [] as { id: string; title: string; label: string }[],
     };
-  }, [notes, reminders, c.accent]);
+  }, [notes, reminders, c.accent, vibeValue]);
 
   const listData: ListItem[] = useMemo(() => {
     const items: ListItem[] = [
@@ -292,7 +364,7 @@ export default function HomeScreen() {
         case 'done':
           toggleDone(note.id);
           if (!note.isDone) {
-            onNoteCompleted(vibeValue);
+            onNoteCompleted(vibeValue, note.title);
             const remainingP0 = notes.filter((n) => !n.isDone && n.id !== note.id && n.priority === 0);
             if (remainingP0.length === 0 && note.priority === 0) {
               onAllP0sClear(vibeValue);
@@ -306,12 +378,12 @@ export default function HomeScreen() {
           break;
         case 'delete':
           deleteNote(note.id);
-          onNoteDeleted(vibeValue);
+          onNoteDeleted(vibeValue, note.title);
           pushUndo('Deleted', async () => { await restoreNote(note.id); await loadNotes(context); });
           break;
         case 'archive':
           deleteNote(note.id);
-          onNoteDeleted(vibeValue);
+          onNoteDeleted(vibeValue, note.title);
           pushUndo('Archived', async () => { await restoreNote(note.id); await loadNotes(context); });
           break;
       }
@@ -374,7 +446,9 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={{ marginTop: 4 }}>
-              <Text style={[typography.caption, { color: c.textMuted }]}>{getGreeting()}, Avinash</Text>
+              <Text style={[typography.caption, { color: c.textMuted }]}>
+                {aiGreeting || `${getGreeting()}, Avinash`}
+              </Text>
               <Text style={[{ fontSize: 12, color: c.textDim, fontStyle: 'italic', marginTop: 2 }]}>
                 "{getQuote(vibeValue)}"
               </Text>
@@ -422,7 +496,10 @@ export default function HomeScreen() {
         return (
           <Pressable
             style={[styles.aiBanner, { backgroundColor: `${aiInsight.iconColor}12`, borderColor: `${aiInsight.iconColor}25` }]}
-            onPress={() => insightNotes.length > 0 && setAiBannerExpanded(!aiBannerExpanded)}
+            onPress={() => {
+              if (aiInsight.type === 'calm' || aiInsight.type === 'clear') return;
+              if (insightNotes.length > 0) setAiBannerExpanded(!aiBannerExpanded);
+            }}
           >
             <View style={[styles.aiBannerGlow, { backgroundColor: aiInsight.iconColor }]} />
             {/* Header row */}
@@ -431,10 +508,14 @@ export default function HomeScreen() {
                 <Ionicons name={aiInsight.icon} size={18} color={aiInsight.iconColor} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.aiBannerText, { color: c.text }]} numberOfLines={2}>{aiInsight.text}</Text>
-                <Text style={[{ fontSize: 11, color: c.textDim, marginTop: 2 }]}>{aiInsight.subtext}</Text>
+                <Text style={[styles.aiBannerText, { color: c.text }]} numberOfLines={2}>
+                  {aiInsightOverride ? aiInsightOverride.reason : aiInsight.text}
+                </Text>
+                <Text style={[{ fontSize: 11, color: c.textDim, marginTop: 2 }]}>
+                  {aiInsightOverride ? aiInsightOverride.action : aiInsight.subtext}
+                </Text>
               </View>
-              {insightNotes.length > 0 && (
+              {insightNotes.length > 0 && aiInsight.type !== 'calm' && aiInsight.type !== 'clear' && (
                 <Ionicons name={aiBannerExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={c.textMuted} />
               )}
             </View>
@@ -475,33 +556,33 @@ export default function HomeScreen() {
                         )}
                       </View>
 
-                      {/* Reminder row */}
+                      {/* Reminder row — options based on priority */}
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="alarm-outline" size={11} color={c.textMuted} />
-                        {noteReminder ? (
-                          <>
-                            <Text style={[{ fontSize: 10, color: c.accent, fontWeight: '600' }]}>
-                              {new Date(noteReminder.remindAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                            </Text>
-                            <Pressable
-                              style={[styles.aiPriBtn, { borderColor: c.border }]}
-                              onPress={() => { setAiBannerExpanded(false); setDetailNoteId(note.id); }}
-                            >
-                              <Text style={[{ fontSize: 10, fontWeight: '600', color: c.textDim }]}>Change</Text>
-                            </Pressable>
-                          </>
-                        ) : (
-                          <>
-                            {[{ label: '+1d', hours: 24 }, { label: '+3d', hours: 72 }, { label: '+1w', hours: 168 }].map((r) => (
+                        {noteReminder && (
+                          <Text style={[{ fontSize: 10, color: c.accent, fontWeight: '600', marginRight: 2 }]}>
+                            {new Date(noteReminder.remindAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </Text>
+                        )}
+                        {(() => {
+                          const opts = note.priority === 0
+                            ? [{ label: '+2h', hours: 2 }, { label: '+12h', hours: 12 }, { label: '+1d', hours: 24 }]
+                            : note.priority === 1
+                            ? [{ label: '+1d', hours: 24 }, { label: '+3d', hours: 72 }, { label: '+5d', hours: 120 }]
+                            : [{ label: '+3d', hours: 72 }, { label: '+1w', hours: 168 }, { label: '+2w', hours: 336 }];
+                          const base = noteReminder ? new Date(noteReminder.remindAt).getTime() : Date.now();
+                          return opts.map((r) => (
                               <Pressable
                                 key={r.label}
                                 style={[styles.aiPriBtn, { borderColor: c.border }]}
                                 onPress={async () => {
-                                  const addReminder = useReminderStore.getState().addReminder;
-                                  await addReminder({
+                                  const store = useReminderStore.getState();
+                                  // Dismiss existing reminder if updating
+                                  if (noteReminder) await store.dismissReminder(noteReminder.id);
+                                  await store.addReminder({
                                     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                                     noteId: note.id,
-                                    remindAt: new Date(Date.now() + r.hours * 60 * 60 * 1000).toISOString(),
+                                    remindAt: new Date(base + r.hours * 60 * 60 * 1000).toISOString(),
                                     calendarEventId: null,
                                     status: 'pending',
                                     aiSuggested: false,
@@ -513,9 +594,8 @@ export default function HomeScreen() {
                               >
                                 <Text style={[{ fontSize: 10, fontWeight: '600', color: c.textDim }]}>{r.label}</Text>
                               </Pressable>
-                            ))}
-                          </>
-                        )}
+                            ));
+                        })()}
                         {/* Done button */}
                         <Pressable
                           style={[styles.aiPriBtn, { borderColor: `${c.accent3}40`, marginLeft: 'auto' }]}
@@ -528,6 +608,56 @@ export default function HomeScreen() {
                     </View>
                   );
                 })}
+
+                {/* AI Folder suggestions */}
+                {folderSuggestions.length > 0 && (
+                  <View style={[styles.aiNoteCard, { backgroundColor: c.bgCard, borderColor: c.accent }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <Ionicons name="folder-outline" size={14} color={c.accent} />
+                      <Text style={[{ fontSize: 12, fontWeight: '700', color: c.accent }]}>Organize into folders</Text>
+                    </View>
+                    {folderSuggestions.slice(0, 4).map((s, i) => (
+                      <Pressable
+                        key={`${s.noteId}-${i}`}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 }}
+                        onPress={async () => {
+                          const addFolder = useFolderStore.getState().addFolder;
+                          const existingFolder = folders.find((f) => f.name.toLowerCase() === s.folderName.toLowerCase());
+                          let targetFolderId = existingFolder?.id || null;
+
+                          if (s.isNew && !existingFolder) {
+                            const newFolder = {
+                              id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                              name: s.folderName,
+                              context,
+                              parentId: null,
+                              icon: 'folder',
+                              color: '#7C6AFF',
+                              sort: folders.length,
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                              isDirty: true,
+                            };
+                            await addFolder(newFolder);
+                            targetFolderId = newFolder.id;
+                          }
+
+                          if (targetFolderId) {
+                            const note = getNoteById(s.noteId);
+                            if (note) updateNote({ ...note, folderId: targetFolderId });
+                          }
+                          setFolderSuggestions((prev) => prev.filter((x) => x.noteId !== s.noteId));
+                        }}
+                      >
+                        <Text style={[{ fontSize: 12, color: c.text, flex: 1 }]} numberOfLines={1}>{s.noteTitle}</Text>
+                        <View style={[styles.aiPriBtn, { borderColor: s.isNew ? c.accent2 : c.accent }]}>
+                          <Ionicons name={s.isNew ? 'add-circle-outline' : 'folder-outline'} size={10} color={s.isNew ? c.accent2 : c.accent} />
+                          <Text style={[{ fontSize: 10, fontWeight: '600', color: s.isNew ? c.accent2 : c.accent }]}>{s.folderName}</Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
           </Pressable>

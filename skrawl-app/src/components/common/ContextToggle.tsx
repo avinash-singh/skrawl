@@ -1,5 +1,4 @@
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useThemeColors, radii } from '@/src/theme';
 import { useUIStore } from '@/src/store/ui-store';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -9,19 +8,21 @@ export function ContextToggle() {
   const context = useUIStore((s) => s.context);
   const setContext = useUIStore((s) => s.setContext);
 
-  const pillStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: withTiming(context === 'personal' ? 0 : 39, { duration: 200, easing: Easing.out(Easing.cubic) }) }],
-    backgroundColor: context === 'personal' ? c.accent : '#3D8BFF',
-  }));
-
   return (
     <View style={[styles.wrap, { backgroundColor: c.bgCard, borderColor: c.border }]}>
-      <Animated.View style={[styles.pill, pillStyle]} />
-      <Pressable style={styles.btn} onPress={() => setContext('personal')}>
-        <Ionicons name="person" size={14} color={context === 'personal' ? '#fff' : c.textMuted} />
+      <Pressable
+        style={[styles.btn, context === 'personal' && { backgroundColor: c.accent, borderRadius: radii.full }]}
+        onPress={() => setContext('personal')}
+      >
+        <Ionicons name="person" size={12} color={context === 'personal' ? '#fff' : c.textMuted} />
+        {context === 'personal' && <Text style={styles.label}>Personal</Text>}
       </Pressable>
-      <Pressable style={styles.btn} onPress={() => setContext('business')}>
-        <Ionicons name="briefcase" size={14} color={context === 'business' ? '#fff' : c.textMuted} />
+      <Pressable
+        style={[styles.btn, context === 'business' && { backgroundColor: '#3D8BFF', borderRadius: radii.full }]}
+        onPress={() => setContext('business')}
+      >
+        <Ionicons name="briefcase" size={12} color={context === 'business' ? '#fff' : c.textMuted} />
+        {context === 'business' && <Text style={styles.label}>Business</Text>}
       </Pressable>
     </View>
   );
@@ -33,23 +34,22 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     borderWidth: 1,
     padding: 3,
-    height: 42,
-    width: 84,
+    height: 36,
     position: 'relative',
   },
-  pill: {
-    position: 'absolute',
-    top: 3,
-    left: 3,
-    width: 37,
-    height: 34,
-    borderRadius: radii.full,
-  },
   btn: {
-    width: 39,
-    height: 36,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    height: 30,
     zIndex: 2,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
 });

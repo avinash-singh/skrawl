@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView, Keyboard } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useThemeColors, colors, typography, spacing, radii } from '@/src/theme';
 import { useUIStore } from '@/src/store/ui-store';
@@ -132,7 +132,7 @@ export default function SearchScreen() {
   const showRecents = !hasSearched && !query.trim() && recentIds.length > 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bg }]}>
+    <Pressable style={[styles.container, { backgroundColor: c.bg }]} onPress={Keyboard.dismiss}>
       {/* Search header */}
       <View style={styles.headerWrap}>
         <Text style={[typography.heading, { color: c.text }]}>Search</Text>
@@ -297,7 +297,7 @@ export default function SearchScreen() {
 
       {/* Detail sheet */}
       <DetailSheet noteId={detailNoteId} onDismiss={() => setDetailNoteId(null)} />
-    </View>
+    </Pressable>
   );
 }
 

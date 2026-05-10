@@ -8,7 +8,7 @@ import { useSyncStore } from '@/src/store/sync-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Updates from 'expo-updates';
 import { scheduleReminder as testNotif } from '@/src/services/notifications';
-import { setApiKey as saveApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey, getApiKey } from '@/src/services/ai-service';
+import { setApiKey as saveApiKey, isConfigured as isAiConfigured, verifyApiKey, clearApiKey as clearAiKey, getApiKey, loadApiKey } from '@/src/services/ai-service';
 import type { NoteType } from '@/src/models';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -346,19 +346,50 @@ export default function SettingsScreen() {
 
         {/* AI & Integrations */}
         <Group label="AI & INTEGRATIONS" c={c}>
-          {/* OpenAI connection status */}
+          {/* Gemini connection status */}
           <View style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-            <View style={[styles.rowIcon, { backgroundColor: '#10A37F' }]}><Ionicons name="sparkles" size={16} color="#fff" /></View>
+            <View style={[styles.rowIcon, { backgroundColor: '#4285F4' }]}><Ionicons name="sparkles" size={16} color="#fff" /></View>
             <View style={{ flex: 1 }}>
-              <Text style={[typography.body, { color: c.text }]}>OpenAI</Text>
+              <Text style={[typography.body, { color: c.text }]}>Gemini</Text>
               <Text style={[{ fontSize: 11, color: aiConnected ? c.accent3 : c.textMuted }]}>
-                {aiConnected ? 'Connected — GPT-4o-mini' : 'Not connected'}
+                {aiConnected ? 'Connected — Gemini 2.5 Flash' : 'Not connected'}
               </Text>
             </View>
             {aiConnected ? (
-              <Pressable onPress={async () => { await clearAiKey(); setAiConnected(false); setApiToken(''); }}>
-                <Text style={[{ fontSize: 12, fontWeight: '600', color: c.danger }]}>Disconnect</Text>
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                <Pressable onPress={async () => {
+                  Alert.alert('Testing AI...', 'Calling Gemini Gemini 2.5 Flash');
+                  await loadApiKey();
+                  const key = getApiKey();
+                  if (!key) { Alert.alert('Error', 'No API key found in storage'); return; }
+                  try {
+                    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ contents: [{ parts: [{ text: 'Say "Skrawl AI works!" in 3 words' }] }], generationConfig: { maxOutputTokens: 20 } }),
+                    });
+                    const text = await resp.text();
+                    if (!resp.ok) {
+                      // Show available models to help debug
+                      const modelsResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                      const modelsText = modelsResp.ok ? await modelsResp.text() : 'Could not list models';
+                      const modelNames = modelsResp.ok ? JSON.parse(modelsText).models?.map((m: any) => m.name).slice(0, 5).join(', ') : modelsText;
+                      Alert.alert('AI Error', `HTTP ${resp.status}: ${text.substring(0, 80)}\n\nAvailable models: ${modelNames}`);
+                      return;
+                    }
+                    const data = JSON.parse(text);
+                    const msg = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    Alert.alert('AI Works!', msg || 'Empty response');
+                  } catch (e: any) {
+                    Alert.alert('AI Failed', e.message || 'Unknown error');
+                  }
+                }}>
+                  <Text style={[{ fontSize: 12, fontWeight: '600', color: c.accent }]}>Test</Text>
+                </Pressable>
+                <Pressable onPress={async () => { await clearAiKey(); setAiConnected(false); setApiToken(''); }}>
+                  <Text style={[{ fontSize: 12, fontWeight: '600', color: c.danger }]}>Disconnect</Text>
+                </Pressable>
+              </View>
             ) : (
               <View style={[{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.textMuted }]} />
             )}
@@ -372,17 +403,17 @@ export default function SettingsScreen() {
                 style={[styles.row, { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
                 onPress={async () => {
                   await WebBrowser.openBrowserAsync(
-                    'https://platform.openai.com/api-keys',
+                    'https://aistudio.google.com/apikey',
                     { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN }
                   );
                   setAuthMode('key');
                   setEditingToken(true);
                 }}
               >
-                <View style={[styles.rowIcon, { backgroundColor: '#10A37F' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
+                <View style={[styles.rowIcon, { backgroundColor: '#4285F4' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.body, { color: c.text }]}>Get API Key</Text>
-                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>Sign up at platform.openai.com (free tier)</Text>
+                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>Free at aistudio.google.com</Text>
                 </View>
                 <Ionicons name="open-outline" size={16} color={c.textMuted} />
               </Pressable>
@@ -395,7 +426,7 @@ export default function SettingsScreen() {
                 <View style={[styles.rowIcon, { backgroundColor: '#7C6AFF' }]}><Ionicons name="key-outline" size={16} color="#fff" /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.body, { color: c.text }]}>Paste API Key</Text>
-                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>From platform.openai.com/api-keys</Text>
+                  <Text style={[{ fontSize: 11, color: c.textMuted }]}>From aistudio.google.com/apikey</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
               </Pressable>
@@ -415,12 +446,12 @@ export default function SettingsScreen() {
           {/* API Key input */}
           {editingToken && (
             <View style={{ padding: 14, gap: 8 }}>
-              <Text style={[{ fontSize: 12, color: c.textDim }]}>Paste your OpenAI API key:</Text>
+              <Text style={[{ fontSize: 12, color: c.textDim }]}>Paste your Gemini API key:</Text>
               <TextInput
                 style={[styles.tokenInput, { color: c.text, borderColor: c.border, backgroundColor: c.bgInput }]}
                 value={apiToken}
                 onChangeText={setApiToken}
-                placeholder="sk-..."
+                placeholder="AIza..."
                 placeholderTextColor={c.textMuted}
                 autoFocus
                 autoCapitalize="none"
@@ -455,7 +486,7 @@ export default function SettingsScreen() {
             </View>
           )}
 
-          <Row c={c} iconBg="#FF6AC2" icon="sparkles" label={`AI Reminders${!aiConnected ? ' (connect AI)' : ''}`} right={<Toggle on={aiReminders && aiConnected} onPress={() => { if (aiConnected) { setAiReminders(!aiReminders); nudgeShow(aiReminders ? 'AI Reminders off' : 'AI Reminders on'); } else { nudgeShow('Connect OpenAI first'); } }} />} border />
+          <Row c={c} iconBg="#FF6AC2" icon="sparkles" label={`AI Reminders${!aiConnected ? ' (connect AI)' : ''}`} right={<Toggle on={aiReminders && aiConnected} onPress={() => { if (aiConnected) { setAiReminders(!aiReminders); nudgeShow(aiReminders ? 'AI Reminders off' : 'AI Reminders on'); } else { nudgeShow('Connect Gemini first'); } }} />} border />
           <Row c={c} iconBg="#6AFFCB" icon="mic" label="Voice Commands" right={<Toggle on={voiceCommands} onPress={() => setVoiceCommands(!voiceCommands)} />} />
         </Group>
 
@@ -628,7 +659,7 @@ export default function SettingsScreen() {
         </Group>
 
         <View style={{ alignItems: 'center', paddingVertical: 24, gap: 10 }}>
-          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.1.2</Text>
+          <Text style={[{ fontSize: 12, color: c.textMuted, fontWeight: '500' }]}>Skrawl v1.4.2</Text>
           <Pressable
             onPress={async () => {
               try {
